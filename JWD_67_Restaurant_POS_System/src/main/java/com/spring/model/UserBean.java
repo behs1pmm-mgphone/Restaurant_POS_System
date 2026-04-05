@@ -40,4 +40,5 @@ public class UserBean {
     private Integer deletedBy;
     private Integer updatedBy;
     private Timestamp updatedAt;
+    private Integer test;
 }
