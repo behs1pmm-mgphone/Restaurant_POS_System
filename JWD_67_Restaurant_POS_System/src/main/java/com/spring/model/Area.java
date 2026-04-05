@@ -15,6 +15,5 @@ public class Area {
 	private Integer areaId;
 	private String areaName;
 	private String status;
-	private String test;
 
 }
