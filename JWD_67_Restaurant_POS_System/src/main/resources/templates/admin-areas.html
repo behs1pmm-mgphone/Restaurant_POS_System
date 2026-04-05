@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>Restaurant Areas | Premium POS</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
+<style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+
+    .sidebar-gradient { background: linear-gradient(180deg, #064E3B 0%, #065F46 100%); }
+    .welcome-gradient { background: linear-gradient(135deg, #064E3B 0%, #059669 100%); }
+
+    .area-card-highlight {
+        background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+        border: 2px solid #f1f5f9;
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .area-card-highlight:hover {
+        transform: translateY(-8px);
+        border-color: #10b981;
+        box-shadow: 0 25px 50px -12px rgba(6, 78, 59, 0.1);
+    }
+
+    /* Maintenance Mode Styles */
+    .area-disabled {
+        filter: grayscale(1) opacity(0.6);
+        position: relative;
+        background: #f8fafc !important;
+        border-color: #e2e8f0 !important;
+        pointer-events: none;
+    }
+
+    .area-disabled::after {
+        content: 'REBUILDING';
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background: #f59e0b;
+        color: white;
+        font-weight: 900;
+        padding: 4px 12px;
+        border-radius: 8px;
+        font-size: 9px;
+        letter-spacing: 1.5px;
+        box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);
+        z-index: 10;
+    }
+
+    .status-badge-maintenance {
+        background: #64748b !important;
+        box-shadow: none !important;
+    }
+
+    aside { transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+    .sidebar-hidden aside { margin-left: -18rem; }
+    .modal-backdrop { background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(12px); }
+
+    /* Toast Notifications */
+    .toast-container {
+        position: fixed;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 200;
+        width: 100%;
+        max-width: 450px;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 1.5rem;
+    }
+    .js-alert {
+        pointer-events: auto;
+        width: 100%;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        margin-bottom: 1rem;
+    }
+    .animate-drop-down { animation: dropDown 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    @keyframes dropDown {
+        from { transform: translateY(-150%) scale(0.9); opacity: 0; }
+        to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    .fade-out-up {
+        opacity: 0 !important;
+        transform: translateY(-150%) scale(0.9) !important;
+        margin-top: -80px !important;
+    }
+    .alert-progress {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 4px;
+        width: 100%;
+        transform-origin: left;
+        animation: timerLoop 4s linear forwards;
+    }
+    @keyframes timerLoop { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+</style>
+</head>
+<body class="bg-[#F8FAFC] text-slate-800">
+
+    <div class="toast-container">
+        <div th:if="${success}" class="js-alert animate-drop-down bg-white/90 backdrop-blur-xl p-6 rounded-[2rem] flex items-center gap-5 relative overflow-hidden">
+            <div class="w-12 h-12 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200">
+                <i class="fas fa-check text-xl"></i>
+            </div>
+            <div class="pr-4">
+                <p class="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600 mb-0.5">Success</p>
+                <p class="font-bold text-slate-800 text-base" th:text="${success}"></p>
+            </div>
+            <div class="alert-progress bg-emerald-500/30"></div>
+        </div>
+
+        <div th:if="${error}" class="js-alert animate-drop-down bg-white/90 backdrop-blur-xl p-6 rounded-[2rem] flex items-center gap-5 relative overflow-hidden">
+            <div class="w-12 h-12 bg-red-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-red-200">
+                <i class="fas fa-exclamation-triangle text-xl"></i>
+            </div>
+            <div class="pr-4">
+                <p class="text-[10px] font-black uppercase tracking-[0.2em] text-red-600 mb-0.5">Denied</p>
+                <p class="font-bold text-slate-800 text-base" th:text="${error}"></p>
+            </div>
+            <div class="alert-progress bg-red-500/30"></div>
+        </div>
+    </div>
+
+    <div id="dashboardWrapper" class="flex h-screen overflow-hidden">
+        <aside class="w-72 sidebar-gradient text-white flex flex-col shadow-2xl relative shrink-0">
+            <div class="absolute top-0 left-0 w-32 h-32 bg-white/5 rounded-full -ml-16 -mt-16"></div>
+
+            <div class="p-10 flex flex-col items-center relative z-10 border-b border-white/10">
+                <div class="w-20 h-20 rounded-[2rem] bg-emerald-500/20 backdrop-blur-md border border-white/20 flex items-center justify-center text-3xl font-black shadow-2xl mb-4 group hover:scale-110 transition-transform cursor-pointer">
+                    <span class="text-emerald-400 group-hover:text-white transition-colors" th:text="${session.loginUser.userName.substring(0,1)}">A</span>
+                </div>
+                <h3 class="font-bold text-lg tracking-tight" th:text="${session.loginUser.userName}">Admin Name</h3>
+                <div class="px-3 py-1 bg-emerald-500/10 rounded-full mt-2 border border-emerald-500/20">
+                    <span class="text-[9px] uppercase tracking-[0.2em] text-emerald-400 font-black">Administrator</span>
+                </div>
+            </div>
+
+            <nav class="flex-1 px-6 py-8 space-y-3 overflow-y-auto no-scrollbar relative z-10">
+                <a th:href="@{/admin/dashboard}" class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group">
+                    <i class="fas fa-home text-emerald-500/50 group-hover:text-emerald-400 transition-colors"></i>
+                    <span class="font-semibold opacity-70 group-hover:opacity-100">Home</span>
+                </a>
+
+                <a th:href="@{/admin/users}" class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group">
+                    <i class="fas fa-users-cog text-emerald-500/50 group-hover:text-emerald-400 transition-colors"></i>
+                    <span class="font-semibold opacity-70 group-hover:opacity-100">User Management</span>
+                </a>
+
+                <a th:href="@{/admin/areas}" class="flex items-center gap-4 p-4 bg-white/10 rounded-[1.5rem] shadow-inner font-bold border border-white/5 transition-all">
+                    <i class="fas fa-map-marker-alt text-emerald-400"></i> Area Management
+                </a>
+
+                <a th:href="@{/admin/menu}" class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group">
+                    <i class="fas fa-utensils text-emerald-500/50 group-hover:text-emerald-400 transition-colors"></i>
+                    <span class="font-semibold opacity-70 group-hover:opacity-100">Menu Catalog</span>
+                </a>
+
+                <a th:href="@{/admin/reports/daily}" class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group">
+                    <i class="fas fa-chart-pie text-emerald-500/50 group-hover:text-emerald-400 transition-colors"></i>
+                    <span class="font-semibold opacity-70 group-hover:opacity-100">Reports</span>
+                </a>
+            </nav>
+
+            <div class="p-8 border-t border-white/10 relative z-10">
+                <a th:href="@{/logout}" class="flex items-center justify-center gap-3 p-4 bg-red-500/10 hover:bg-red-500 rounded-2xl transition-all text-red-400 hover:text-white font-bold text-sm border border-red-500/20">
+                    <i class="fas fa-power-off"></i> Logout System
+                </a>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col overflow-y-auto">
+            <header class="h-20 bg-white/80 backdrop-blur-md px-10 flex justify-between items-center border-b border-slate-200 sticky top-0 z-20 shrink-0">
+                <div class="flex items-center gap-5">
+                    <button id="sidebarToggle" class="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-500">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <div class="w-1 h-8 welcome-gradient rounded-full"></div>
+                    <div>
+                        <h2 class="font-black text-slate-800 text-xl tracking-tight uppercase leading-none">Dining Areas</h2>
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1 opacity-70">Floor Plan Control</p>
+                    </div>
+                </div>
+                <button onclick="openModal('addAreaModal')" class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg active:scale-95 flex items-center gap-2">
+                    <i class="fas fa-plus"></i> Add Area
+                </button>
+            </header>
+
+            <div class="p-10">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div th:each="area : ${areas}" class="relative group">
+                        <div class="absolute top-5 right-5 flex flex-col gap-2 z-30">
+                            <a th:href="@{/admin/areas/toggle-status/{id}(id=${area.maskedId})}"
+                               class="w-9 h-9 bg-white/80 backdrop-blur shadow-md border rounded-xl flex items-center justify-center transition-all active:scale-90 hover:scale-110"
+                               th:classappend="${area.status == 'Disabled'
+                                                ? 'border-amber-200 text-amber-500 hover:bg-amber-500 hover:text-white'
+                                                : 'border-slate-100 text-slate-600 hover:bg-slate-800 hover:text-white'}"
+                               th:title="${area.status == 'Disabled' ? 'Enable Area' : 'Disable for Maintenance'}">
+                                <i th:class="${area.status == 'Disabled' ? 'fas fa-toggle-on' : 'fas fa-toggle-off'}"></i>
+                            </a>
+
+                            <button type="button"
+                                th:data-id="${area.maskedId}" th:data-name="${area.areaName}"
+                                onclick="openEditModal(this.getAttribute('data-id'), this.getAttribute('data-name'))"
+                                class="w-9 h-9 bg-white/80 backdrop-blur shadow-md border border-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center hover:bg-emerald-600 hover:text-white hover:scale-110 transition-all active:scale-90">
+                                <i class="fas fa-pencil-alt text-xs"></i>
+                            </button>
+
+                            <a th:href="@{/admin/areas/delete/{id}(id=${area.maskedId})}"
+                               onclick="return confirm('Remove this area and all its configuration?')"
+                               class="w-9 h-9 bg-white/80 backdrop-blur shadow-md border border-red-100 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-500 hover:text-white hover:scale-110 transition-all active:scale-90">
+                                <i class="fas fa-trash-alt text-xs"></i>
+                            </a>
+                        </div>
+
+                        <a th:href="@{/admin/areas/{name}/tables(name=${area.areaName})}"
+                           th:classappend="${area.status == 'Disabled'} ? 'area-disabled' : ''"
+                           class="area-card-highlight p-8 rounded-[3rem] text-center block relative overflow-hidden flex flex-col items-center">
+
+                            <div class="w-20 h-20 bg-white shadow-sm text-emerald-600 rounded-3xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                <i class="fas fa-couch text-3xl" th:if="${area.areaName.toLowerCase().contains('main')}"></i>
+                                <i class="fas fa-chair text-3xl" th:unless="${area.areaName.toLowerCase().contains('main')}"></i>
+                            </div>
+
+                            <h3 class="text-xl font-black text-slate-800 tracking-tight" th:text="${area.areaName}">Main Hall</h3>
+
+                            <div class="mt-4 flex items-center gap-2 px-5 py-2 rounded-full shadow-lg"
+                                 th:classappend="${area.status == 'Disabled'} ? 'status-badge-maintenance text-white' : 'bg-emerald-500 text-white shadow-emerald-100'">
+                                <i th:class="${area.status == 'Disabled' ? 'fas fa-tools text-[10px]' : 'fas fa-chevron-right text-[8px]'}"></i>
+                                <span class="text-[9px] font-black uppercase tracking-widest"
+                                      th:text="${area.status == 'Disabled' ? 'Under Rebuild' : 'Manage Tables'}">Manage Tables</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="addAreaModal" class="fixed inset-0 z-[100] flex items-center justify-center hidden modal-backdrop">
+        <div class="bg-white w-full max-w-md p-10 rounded-[3rem] shadow-2xl m-4">
+            <h3 class="text-2xl font-black text-slate-800 mb-6 text-center tracking-tight">Add New Area</h3>
+            <form th:action="@{/admin/areas/add}" method="POST" class="space-y-6">
+                <input type="text" name="areaName" required class="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-emerald-500 outline-none font-bold">
+                <div class="flex gap-4">
+                    <button type="button" onclick="closeModal('addAreaModal')" class="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest">Cancel</button>
+                    <button type="submit" class="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg">Save Area</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="editAreaModal" class="fixed inset-0 z-[100] flex items-center justify-center hidden modal-backdrop">
+        <div class="bg-white w-full max-w-md p-10 rounded-[3rem] shadow-2xl m-4">
+            <h3 class="text-2xl font-black text-slate-800 mb-6 text-center tracking-tight">Edit Area</h3>
+            <form th:action="@{/admin/areas/update}" method="POST" class="space-y-6">
+                <input type="hidden" name="areaId" id="edit_area_id">
+                <input type="text" name="areaName" id="edit_area_name" required class="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-emerald-500 outline-none font-bold">
+                <div class="flex gap-4">
+                    <button type="button" onclick="closeModal('editAreaModal')" class="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-widest">Cancel</button>
+                    <button type="submit" class="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const toggleBtn = document.getElementById('sidebarToggle');
+        const wrapper = document.getElementById('dashboardWrapper');
+        toggleBtn.addEventListener('click', () => wrapper.classList.toggle('sidebar-hidden'));
+
+        let stompClient = null;
+        function connectWebSocket() {
+            const socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+            stompClient.debug = null;
+            stompClient.connect({}, function (frame) {
+                stompClient.subscribe('/topic/area-updates', function (msg) {
+                    if (msg.body === "REFRESH_AREAS") window.location.reload();
+                });
+            }, () => setTimeout(connectWebSocket, 5000));
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            connectWebSocket();
+            const alerts = document.querySelectorAll('.js-alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    alert.classList.add('fade-out-up');
+                    setTimeout(() => alert.remove(), 700);
+                }, 4000);
+            });
+        });
+
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function openEditModal(id, name) {
+            document.getElementById('edit_area_id').value = id;
+            document.getElementById('edit_area_name').value = name;
+            openModal('editAreaModal');
+        }
+    </script>
+</body>
+</html>

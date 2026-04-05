@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Select Area | Premium POS</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+
+<style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .sidebar-gradient { background: linear-gradient(180deg, #1E1B4B 0%, #312E81 100%); }
+    .waiter-gradient { background: linear-gradient(135deg, #4338CA 0%, #6366F1 100%); }
+
+    .area-card-highlight {
+        background: white;
+        border: 1px solid #e2e8f0;
+        transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+    .area-card-highlight:hover {
+        transform: translateY(-8px);
+        border-color: #6366F1;
+        background: linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%);
+        box-shadow: 0 20px 40px -10px rgba(67, 56, 202, 0.15);
+    }
+
+    /* --- SIDEBAR LOGIC (Matches Dashboard) --- */
+    aside { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 50; }
+
+    @media (max-width: 1280px) {
+        aside { position: fixed; height: 100vh; left: -18rem; }
+        .sidebar-open aside { left: 0; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 40; }
+        .sidebar-open .sidebar-overlay { display: block; }
+    }
+
+    .sidebar-hidden aside { margin-left: -18rem; }
+    /* ---------------------------------------- */
+
+    .area-locked-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 50;
+        background: rgba(15, 23, 42, 0.7);
+        backdrop-filter: blur(8px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        border-radius: 3rem;
+        border: 2px solid rgba(245, 158, 11, 0.3);
+    }
+</style>
+</head>
+<body class="bg-[#F8FAFC] text-slate-800">
+    <div id="overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <div id="mainWrapper" class="flex h-screen overflow-hidden">
+
+        <aside id="sidebar" class="w-72 sidebar-gradient text-white flex flex-col shadow-2xl shrink-0">
+            <div class="p-10 flex flex-col items-center border-b border-white/10">
+                <div class="w-20 h-20 rounded-[2rem] bg-indigo-500/20 backdrop-blur-md border border-white/20 flex items-center justify-center text-3xl font-black mb-4">
+                    <span class="text-indigo-300" th:if="${session.loginUser != null}" th:text="${session.loginUser.userName.substring(0,1)}">W</span>
+                </div>
+                <h3 class="font-bold text-lg" th:if="${session.loginUser != null}" th:text="${session.loginUser.userName}">Waiter Name</h3>
+                <div class="px-3 py-1 bg-indigo-500/20 rounded-full mt-2 border border-indigo-400/30">
+                    <span class="text-[9px] uppercase tracking-widest text-indigo-300 font-black">Staff / Waiter</span>
+                </div>
+            </div>
+
+            <nav class="flex-1 px-6 py-8 space-y-3 overflow-y-auto no-scrollbar">
+                <a th:href="@{/waiter/dashboard}" class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group opacity-70">
+                    <i class="fas fa-th-large text-indigo-400/50 group-hover:text-indigo-400"></i>
+                    <span class="font-semibold group-hover:opacity-100">Dashboard</span>
+                </a>
+
+                <a th:href="@{/waiter/areas}" class="flex items-center gap-4 p-4 bg-white/10 rounded-[1.5rem] font-bold border border-white/5">
+                    <i class="fas fa-plus-circle text-indigo-400"></i>
+                    <span>New Order</span>
+                </a>
+
+                <a th:href="@{/waiter/orders}" class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group opacity-70">
+                    <i class="fas fa-clipboard-list text-indigo-400/50 group-hover:text-indigo-400"></i>
+                    <span class="font-semibold group-hover:opacity-100">My Orders</span>
+                </a>
+            </nav>
+
+            <div class="p-8 border-t border-white/10">
+                <a th:href="@{/logout}" class="flex items-center justify-center gap-3 p-4 bg-red-500/10 hover:bg-red-500 rounded-2xl transition-all text-red-400 hover:text-white font-bold text-sm">
+                    <i class="fas fa-power-off"></i> Logout
+                </a>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col overflow-y-auto">
+            <header class="h-20 bg-white/80 backdrop-blur-md px-10 flex justify-between items-center border-b border-slate-200 sticky top-0 z-20 shrink-0">
+                <div class="flex items-center gap-5">
+                    <button id="toggleSidebar" class="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-500">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <div class="w-1 h-8 waiter-gradient rounded-full"></div>
+                    <div>
+                        <h2 class="font-black text-slate-800 text-xl tracking-tight uppercase leading-none">Select Section</h2>
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1 opacity-70">Dining Hall Selection</p>
+                    </div>
+                </div>
+            </header>
+
+            <div class="p-10 space-y-10 flex-1">
+                <div>
+                    <h1 class="text-4xl font-black text-slate-800 tracking-tight">Where is the Guest?</h1>
+                    <p class="text-slate-500 font-medium mt-1">Select an area to view available tables</p>
+                </div>
+
+                <div id="areasGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div th:if="${#lists.isEmpty(areas)}" class="col-span-full text-center py-20 bg-white rounded-[3rem] border-2 border-dashed border-slate-200">
+                        <i class="fas fa-map-marked-alt text-5xl text-slate-200 mb-4"></i>
+                        <p class="text-slate-400 font-bold uppercase tracking-widest text-sm">No areas found in the system</p>
+                    </div>
+
+                    <div th:each="area : ${areas}" class="relative group h-full">
+                        <div th:if="${area.status == 'Disabled'}" class="area-locked-overlay flex flex-col items-center justify-center px-6">
+                            <div class="w-14 h-14 bg-amber-500/20 text-amber-500 rounded-2xl flex items-center justify-center mb-4 border border-amber-500/40 animate-pulse">
+                                <i class="fas fa-lock text-xl"></i>
+                            </div>
+                            <h3 class="text-white font-black text-lg tracking-tight uppercase">Area Closed</h3>
+                            <p class="text-slate-400 text-[9px] font-bold uppercase tracking-widest mt-2">Maintenance in progress</p>
+                        </div>
+
+                        <a th:href="${area.status != 'Disabled'} ? @{/waiter/areas/{id}/tables(id=${area.maskedId})} : '#'"
+                           th:classappend="${area.status == 'Disabled'} ? 'opacity-40 pointer-events-none' : ''"
+                           class="area-card-highlight group p-8 rounded-[3rem] text-center flex flex-col items-center relative overflow-hidden h-full">
+
+                            <div class="absolute -top-6 -right-6 w-24 h-24 bg-indigo-500/5 rounded-full group-hover:scale-125 transition-transform duration-700"></div>
+
+                            <div class="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mb-6 group-hover:waiter-gradient group-hover:text-white transition-all duration-500 shadow-sm">
+                                <i class="fas fa-couch text-3xl" th:if="${#strings.contains(#strings.toLowerCase(area.areaName), 'main')}"></i>
+                                <i class="fas fa-wine-glass text-3xl" th:if="${#strings.contains(#strings.toLowerCase(area.areaName), 'vip')}"></i>
+                                <i class="fas fa-tree text-3xl" th:if="${#strings.contains(#strings.toLowerCase(area.areaName), 'outdoor')}"></i>
+                                <i class="fas fa-chair text-3xl" th:if="${!#strings.contains(#strings.toLowerCase(area.areaName), 'main') && !#strings.contains(#strings.toLowerCase(area.areaName), 'vip') && !#strings.contains(#strings.toLowerCase(area.areaName), 'outdoor')}"></i>
+                            </div>
+
+                            <h3 class="text-xl font-black text-slate-800 tracking-tight" th:text="${area.areaName}">Area Name</h3>
+
+                            <div class="mt-6 flex items-center gap-2 px-6 py-2 bg-slate-100 rounded-full group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                                <span class="text-[10px] font-black uppercase tracking-widest"
+                                      th:text="${area.status == 'Disabled'} ? 'Unavailable' : 'Select Area'">Select Area</span>
+                                <i class="fas fa-chevron-right text-[8px] opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all"></i>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script th:inline="javascript">
+        const socket = new SockJS('/ws-pos');
+        const stompClient = Stomp.over(socket);
+        stompClient.debug = null;
+
+        stompClient.connect({}, function (frame) {
+            stompClient.subscribe('/topic/area-updates', function (msg) {
+                window.location.reload();
+            });
+        });
+
+        // Updated JS logic to match the Dashboard exactly
+        function toggleSidebar() {
+            const body = document.body;
+            const wrapper = document.getElementById('mainWrapper');
+
+            if (window.innerWidth <= 1280) {
+                body.classList.toggle('sidebar-open');
+            } else {
+                wrapper.classList.toggle('sidebar-hidden');
+            }
+        }
+
+        document.getElementById('toggleSidebar').addEventListener('click', toggleSidebar);
+    </script>
+</body>
+</html>

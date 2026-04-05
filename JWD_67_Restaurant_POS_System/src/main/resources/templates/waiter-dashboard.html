@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waiter Dashboard | Premium POS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .sidebar-gradient { background: linear-gradient(180deg, #1E1B4B 0%, #312E81 100%); }
+        .waiter-gradient { background: linear-gradient(135deg, #4338CA 0%, #6366F1 100%); }
+
+        /* Smooth transition for the sidebar */
+        aside { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 50; }
+
+        /* Mobile logic */
+        @media (max-width: 1280px) {
+            aside { position: fixed; height: 100vh; left: -18rem; }
+            .sidebar-open aside { left: 0; }
+            .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 40; }
+            .sidebar-open .sidebar-overlay { display: block; }
+        }
+
+        /* Desktop hide logic */
+        .sidebar-hidden aside { margin-left: -18rem; }
+    </style>
+</head>
+<body class="bg-[#F8FAFC] text-slate-800">
+    <div id="overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <div id="dashboardWrapper" class="flex h-screen overflow-hidden">
+        <aside class="w-72 sidebar-gradient text-white flex flex-col shadow-2xl shrink-0">
+            <div class="p-10 flex flex-col items-center border-b border-white/10">
+                <div class="w-20 h-20 rounded-[2rem] bg-indigo-500/20 backdrop-blur-md border border-white/20 flex items-center justify-center text-3xl font-black mb-4">
+                    <span class="text-indigo-300" th:text="${session.loginUser != null ? session.loginUser.userName.substring(0,1) : 'W'}">W</span>
+                </div>
+                <h3 class="font-bold text-lg" th:text="${session.loginUser != null ? session.loginUser.userName : 'Waiter Name'}">Waiter Name</h3>
+                <div class="px-3 py-1 bg-indigo-500/20 rounded-full mt-2 border border-indigo-400/30">
+                    <span class="text-[9px] uppercase tracking-widest text-indigo-300 font-black">Staff / Waiter</span>
+                </div>
+            </div>
+
+            <nav class="flex-1 px-6 py-8 space-y-3 overflow-y-auto no-scrollbar">
+                <a th:href="@{/waiter/dashboard}" class="flex items-center gap-4 p-4 bg-white/10 rounded-[1.5rem] font-bold">
+                    <i class="fas fa-th-large text-indigo-400"></i> Dashboard
+                </a>
+                <a th:href="@{/waiter/areas}" class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group">
+                    <i class="fas fa-plus-circle text-indigo-400/50 group-hover:text-indigo-400"></i>
+                    <span class="font-semibold opacity-70 group-hover:opacity-100">New Order</span>
+                </a>
+                <a th:href="@{/waiter/orders}" class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group">
+                    <i class="fas fa-clipboard-list text-indigo-400/50 group-hover:text-indigo-400"></i>
+                    <span class="font-semibold opacity-70 group-hover:opacity-100">My Orders</span>
+                </a>
+            </nav>
+
+            <div class="p-8 border-t border-white/10">
+                <a th:href="@{/logout}" class="flex items-center justify-center gap-3 p-4 bg-red-500/10 hover:bg-red-500 rounded-2xl transition-all text-red-400 hover:text-white font-bold text-sm">
+                    <i class="fas fa-power-off"></i> Logout
+                </a>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col overflow-y-auto">
+            <header class="h-20 bg-white/80 backdrop-blur-md px-6 lg:px-10 flex justify-between items-center border-b border-slate-200 sticky top-0 z-20 shrink-0">
+                <div class="flex items-center gap-5">
+                    <button id="sidebarToggle" class="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-500">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <div class="w-1 h-8 waiter-gradient rounded-full"></div>
+                    <h2 class="font-black text-slate-800 text-lg uppercase">Service Panel</h2>
+                </div>
+                <div class="hidden sm:flex items-center gap-3">
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Shift Active</span>
+                    <div class="h-2 w-2 rounded-full bg-indigo-500 animate-pulse"></div>
+                </div>
+            </header>
+
+            <div class="p-6 lg:p-10 space-y-8">
+                <div class="waiter-gradient p-8 lg:p-12 rounded-[2.5rem] text-white relative overflow-hidden shadow-2xl">
+                    <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div>
+                            <h1 class="text-3xl lg:text-4xl font-black mb-2">Ready for Service?</h1>
+                            <p class="text-indigo-100 font-medium">Select a table to start a new order.</p>
+                        </div>
+                        <a th:href="@{/waiter/areas}"
+                           class="bg-white text-indigo-600 px-8 py-4 rounded-2xl font-black shadow-xl hover:scale-105 transition-transform inline-block">
+                            NEW ORDER +
+                        </a>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-10">
+                    <a class="block group">
+                        <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all group-hover:border-indigo-300 group-hover:shadow-xl h-full">
+                            <div class="flex justify-between items-start mb-6">
+                                <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                                    <i class="fas fa-chair text-xl"></i>
+                                </div>
+                                <span class="px-3 py-1 bg-green-100 text-green-600 rounded-full text-[10px] font-black uppercase">Live Status</span>
+                            </div>
+                            <p class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Active Tables</p>
+                            <h2 class="text-4xl font-black text-slate-800" th:text="${activeTablesCount != null ? activeTablesCount : '0'}">0</h2>
+                        </div>
+                    </a>
+
+                    <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm h-full">
+                        <div class="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mb-6">
+                            <i class="fas fa-utensils text-xl"></i>
+                        </div>
+                        <p class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Pending Kitchen</p>
+                        <h2 class="text-4xl font-black text-slate-800" th:text="${pendingOrdersCount != null ? pendingOrdersCount : '0'}">0</h2>
+                    </div>
+
+                    <div class="bg-slate-900 p-8 rounded-[2.5rem] text-white flex flex-col justify-between md:col-span-2 lg:col-span-1 h-full">
+                        <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-4">Shift Date</p>
+                        <div class="flex items-baseline gap-3">
+                            <h2 class="text-6xl font-black tracking-tighter" th:text="${#dates.format(#dates.createNow(), 'dd')}">14</h2>
+                            <div class="flex flex-col">
+                                <span class="text-sm font-black text-indigo-400 uppercase" th:text="${#dates.format(#dates.createNow(), 'MMM')}">MAR</span>
+                                <span class="text-sm font-bold text-slate-500" th:text="${#dates.format(#dates.createNow(), 'yyyy')}">2026</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const toggleBtn = document.getElementById('sidebarToggle');
+        const body = document.body;
+        const wrapper = document.getElementById('dashboardWrapper');
+
+        function toggleSidebar() {
+            // Check viewport width
+            if (window.innerWidth <= 1280) {
+                // For Mobile: toggle the class that moves the fixed sidebar
+                body.classList.toggle('sidebar-open');
+            } else {
+                // For Desktop: toggle the class that adds negative margin to the sidebar
+                wrapper.classList.toggle('sidebar-hidden');
+            }
+        }
+
+        toggleBtn.addEventListener('click', toggleSidebar);
+
+        // Optional: Close sidebar on mobile when clicking outside (on the overlay)
+        document.getElementById('overlay').addEventListener('click', () => {
+            if (window.innerWidth <= 1280) {
+                body.classList.remove('sidebar-open');
+            }
+        });
+    </script>
+</body>
+</html>
