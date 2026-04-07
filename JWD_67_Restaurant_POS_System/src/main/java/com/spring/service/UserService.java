@@ -16,28 +16,65 @@ public class UserService {
     @Autowired
     private UserRepository userRepository;
 
-    @Value("${app.default-password:User@123}")
+    @Value("${app.default-password}")
     private String defaultPassword;
 
-    public List<UserBean> getAllUsers() {
-        return userRepository.findAll();
+    public List<UserBean> getAllUsers(boolean includeDeleted) {
+        return userRepository.findAll(includeDeleted);
+    }
+
+    public int countActiveUsersByName(String keyword) {
+        return userRepository.countActiveUsersByName(keyword);
+    }
+
+    public List<UserBean> getActiveUsersPageByName(String keyword, int offset, int limit) {
+        return userRepository.findActiveUsersPageByName(keyword, offset, limit);
     }
 
 
     public UserBean login(String email, String rawPassword) {
-        UserBean user = userRepository.findByEmail(email);
+        if (email == null || rawPassword == null) {
+            return null;
+        }
+
+        // Use strip() to remove Unicode whitespace (Chrome autofill can include it)
+        String normalizedEmail = email.strip().replaceAll("\\s+", "").toLowerCase();
+        String normalizedPassword = rawPassword.strip();
+
+        UserBean user = userRepository.findByEmail(normalizedEmail);
 
         if (user != null) {
             // Debugging logs to verify password matching issues
-            System.out.println("DEBUG: Password typed in browser: [" + rawPassword + "]");
+            System.out.println("DEBUG: Password typed in browser: [" + normalizedPassword + "]");
             System.out.println("DEBUG: Hash stored in Database: [" + user.getPassword() + "]");
 
-            if (BCrypt.checkpw(rawPassword, user.getPassword())) {
-                return user;
-            } else {
-                System.out.println("DEBUG: Password mismatch!");
+            String stored = user.getPassword();
+            if (stored == null || stored.isBlank()) {
+                System.out.println("DEBUG: No password stored for user!");
                 return null;
             }
+
+            // Support both BCrypt-hashed passwords and legacy plain-text passwords.
+            // New users created via admin are stored as BCrypt.
+            boolean looksBcrypt = stored.startsWith("$2a$") || stored.startsWith("$2b$") || stored.startsWith("$2y$");
+            try {
+                if (looksBcrypt) {
+                    if (BCrypt.checkpw(normalizedPassword, stored)) {
+                        return user;
+                    }
+                } else {
+                    // Legacy fallback (plain text stored in DB)
+                    if (normalizedPassword.equals(stored)) {
+                        return user;
+                    }
+                }
+            } catch (IllegalArgumentException e) {
+                // Happens when stored password is not a valid BCrypt string
+                System.out.println("DEBUG: Stored password is not a valid BCrypt hash.");
+            }
+
+            System.out.println("DEBUG: Password mismatch!");
+            return null;
         }
         return null;
     }
@@ -86,7 +123,11 @@ public class UserService {
         return user;
     }
 
-    public void deleteUser(int userId) {
-        userRepository.delete(userId);
+    public void deleteUser(int userId, Integer adminId) {
+        userRepository.delete(userId, adminId);
+    }
+
+    public void updateUserStatus(int userId, int status, Integer adminId) {
+        userRepository.updateStatus(userId, status, adminId);
     }
 }

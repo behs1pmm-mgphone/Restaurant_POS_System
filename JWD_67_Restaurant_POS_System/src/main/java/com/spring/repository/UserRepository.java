@@ -26,7 +26,7 @@ public class UserRepository {
     private JdbcTemplate jdbcTemplate; // Added to fix the save method error
 
     public UserBean findByEmail(String email) {
-        String sql = "SELECT * FROM user WHERE email = ? AND is_deleted = 0";
+        String sql = "SELECT * FROM user WHERE LOWER(email) = ? AND is_deleted = 0";
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, email);
@@ -38,8 +38,9 @@ public class UserRepository {
                     user.setEmail(rs.getString("email"));
                     user.setPassword(rs.getString("password"));
                     user.setRoleId(rs.getInt("role_id"));
+                    user.setStatus(rs.getInt("status"));
                     user.setCreatedAt(rs.getTimestamp("created_at"));
-                    user.setCreatedBy(rs.getInt("created_by"));
+                    user.setCreatedBy(rs.getObject("created_by", Integer.class));
                     user.setDeleted(rs.getBoolean("is_deleted"));
                     return user;
                 }
@@ -51,8 +52,24 @@ public class UserRepository {
     }
 
     public List<UserBean> findAll() {
+        return findAll(false);
+    }
+
+    public List<UserBean> findAll(boolean includeDeleted) {
         List<UserBean> list = new ArrayList<>();
-        String sql = "SELECT * FROM user WHERE is_deleted = 0";
+
+        String sql =
+                "SELECT u.*, " +
+                "       c.user_name  AS created_by_name, " +
+                "       up.user_name AS updated_by_name, " +
+                "       d.user_name  AS deleted_by_name " +
+                "FROM user u " +
+                "LEFT JOIN user c  ON u.created_by = c.user_id " +
+                "LEFT JOIN user up ON u.updated_by = up.user_id " +
+                "LEFT JOIN user d  ON u.deleted_by = d.user_id " +
+                (includeDeleted ? "" : "WHERE u.is_deleted = 0 ") +
+                "ORDER BY u.user_id DESC";
+
         try (Connection con = dataSource.getConnection();
              Statement st = con.createStatement();
              ResultSet rs = st.executeQuery(sql)) {
@@ -62,16 +79,98 @@ public class UserRepository {
                 user.setUserName(rs.getString("user_name"));
                 user.setEmail(rs.getString("email"));
                 user.setRoleId(rs.getInt("role_id"));
+                user.setStatus(rs.getInt("status"));
+                user.setCreatedAt(rs.getTimestamp("created_at"));
+                user.setCreatedBy(rs.getObject("created_by", Integer.class));
+                user.setCreatedByName(rs.getString("created_by_name"));
+                user.setUpdatedAt(rs.getTimestamp("updated_at"));
+                user.setUpdatedBy(rs.getObject("updated_by", Integer.class));
+                user.setUpdatedByName(rs.getString("updated_by_name"));
                 user.setDeleted(rs.getBoolean("is_deleted"));
+                user.setDeletedAt(rs.getTimestamp("deleted_at"));
+                user.setDeletedBy(rs.getObject("deleted_by", Integer.class));
+                user.setDeletedByName(rs.getString("deleted_by_name"));
                 list.add(user);
             }
-        } catch (SQLException e) { e.printStackTrace(); }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return list;
+    }
+
+    public int countActiveUsersByName(String keyword) {
+        String base = "SELECT COUNT(*) FROM user u WHERE u.is_deleted = 0";
+        boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
+        String sql = hasKeyword ? base + " AND u.user_name LIKE ?" : base;
+
+        try (Connection con = dataSource.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            if (hasKeyword) {
+                ps.setString(1, "%" + keyword.trim() + "%");
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    public List<UserBean> findActiveUsersPageByName(String keyword, int offset, int limit) {
+        List<UserBean> list = new ArrayList<>();
+        boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
+
+        String sql =
+                "SELECT u.*, " +
+                "       c.user_name  AS created_by_name, " +
+                "       up.user_name AS updated_by_name " +
+                "FROM user u " +
+                "LEFT JOIN user c  ON u.created_by = c.user_id " +
+                "LEFT JOIN user up ON u.updated_by = up.user_id " +
+                "WHERE u.is_deleted = 0 " +
+                (hasKeyword ? "AND u.user_name LIKE ? " : "") +
+                "ORDER BY u.user_id DESC " +
+                "LIMIT ? OFFSET ?";
+
+        try (Connection con = dataSource.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            int idx = 1;
+            if (hasKeyword) {
+                ps.setString(idx++, "%" + keyword.trim() + "%");
+            }
+            ps.setInt(idx++, limit);
+            ps.setInt(idx, offset);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    UserBean user = new UserBean();
+                    user.setUserId(rs.getInt("user_id"));
+                    user.setUserName(rs.getString("user_name"));
+                    user.setEmail(rs.getString("email"));
+                    user.setRoleId(rs.getInt("role_id"));
+                    user.setStatus(rs.getInt("status"));
+                    user.setCreatedAt(rs.getTimestamp("created_at"));
+                    user.setCreatedBy(rs.getObject("created_by", Integer.class));
+                    user.setCreatedByName(rs.getString("created_by_name"));
+                    user.setUpdatedAt(rs.getTimestamp("updated_at"));
+                    user.setUpdatedBy(rs.getObject("updated_by", Integer.class));
+                    user.setUpdatedByName(rs.getString("updated_by_name"));
+                    user.setDeleted(false);
+                    list.add(user);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
         return list;
     }
 
     public void save(UserBean user) {
-        String sql = "INSERT INTO user (user_name, password, email, role_id, created_by, created_at, is_deleted) " +
-                     "VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 0)";
+        String sql = "INSERT INTO user (user_name, password, email, role_id, status, created_by, created_at, is_deleted) " +
+                     "VALUES (?, ?, ?, ?, 0, ?, CURRENT_TIMESTAMP, 0)";
         try {
             // FIXED: Using the injected jdbcTemplate instance instead of static call
             jdbcTemplate.update(sql,
@@ -114,11 +213,20 @@ public class UserRepository {
         }
     }
 
-    public void delete(int userId) {
-        String sql = "UPDATE user SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP WHERE user_id = ?";
+    public void delete(int userId, Integer deletedBy) {
+        String sql = "UPDATE user " +
+                     "SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP, deleted_by = ?, " +
+                     "    updated_at = CURRENT_TIMESTAMP, updated_by = ? " +
+                     "WHERE user_id = ?";
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setInt(1, userId);
+            if (deletedBy != null) ps.setInt(1, deletedBy);
+            else ps.setNull(1, java.sql.Types.INTEGER);
+
+            if (deletedBy != null) ps.setInt(2, deletedBy);
+            else ps.setNull(2, java.sql.Types.INTEGER);
+
+            ps.setInt(3, userId);
             ps.executeUpdate();
         } catch (SQLException e) { e.printStackTrace(); }
     }
@@ -136,10 +244,25 @@ public class UserRepository {
                     user.setEmail(rs.getString("email"));
                     user.setPassword(rs.getString("password"));
                     user.setRoleId(rs.getInt("role_id"));
+                    user.setStatus(rs.getInt("status"));
                     return user;
                 }
             }
         } catch (SQLException e) { e.printStackTrace(); }
         return null;
+    }
+
+    public void updateStatus(int userId, int status, Integer updatedBy) {
+        String sql = "UPDATE user SET status = ?, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE user_id = ?";
+        try (Connection con = dataSource.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, status);
+            if (updatedBy != null) ps.setInt(2, updatedBy);
+            else ps.setNull(2, java.sql.Types.INTEGER);
+            ps.setInt(3, userId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }

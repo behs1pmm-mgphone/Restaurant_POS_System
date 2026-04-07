@@ -51,6 +51,10 @@ public class AuthController {
         UserBean user = userService.login(userBean.getEmail(), userBean.getPassword());
 
         if (user != null) {
+            if (user.getStatus() != null && user.getStatus() == 1) {
+                model.addAttribute("error", "Your account is suspended. Please contact admin.");
+                return "login";
+            }
             session.setAttribute("loginUser", user);
             Integer roleId = user.getRoleId();
 

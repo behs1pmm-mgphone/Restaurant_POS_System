@@ -23,11 +23,14 @@
                  th:text="${error}">
             </div>
 
-            <form th:action="@{/login}" th:object="${user}" method="post" class="space-y-6">
+            <form th:action="@{/login}" th:object="${user}" method="post" class="space-y-6" autocomplete="off">
     <div>
         <label class="text-sm font-bold text-slate-700 ml-1">Email Address</label>
         <div class="relative mt-1">
             <input type="email" th:field="*{email}" placeholder="" required
+                   autocomplete="off"
+                   autocapitalize="none"
+                   spellcheck="false"
                    class="w-full p-4 rounded-2xl border border-slate-200 bg-white/50 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all font-medium"/>
         </div>
         <p class="text-red-500 text-xs mt-1 font-semibold" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></p>
@@ -39,6 +42,8 @@
         </div>
         <div class="relative mt-1">
             <input type="password" th:field="*{password}" placeholder="" required
+                   autocomplete="off"
+                   spellcheck="false"
                    class="w-full p-4 rounded-2xl border border-slate-200 bg-white/50 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all font-medium"/>
         </div>
         <p class="text-red-500 text-xs mt-1 font-semibold" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></p>
@@ -49,6 +54,18 @@
         Sign In
     </button>
 </form>
+            <script>
+                // Chrome can silently submit saved credentials even after you type.
+                // Force-clear fields on load and when page is restored from bfcache.
+                function clearLoginFields() {
+                    const email = document.querySelector('input[type="email"][name$="email"]');
+                    const pass = document.querySelector('input[type="password"][name$="password"]');
+                    if (email) email.value = '';
+                    if (pass) pass.value = '';
+                }
+                window.addEventListener('DOMContentLoaded', clearLoginFields);
+                window.addEventListener('pageshow', clearLoginFields);
+            </script>
         </div>
     </div>
 </body>

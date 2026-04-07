@@ -33,12 +33,17 @@ public class UserBean {
 
     // Database metadata fields preserved for your JDBC logic
     private Integer roleId;
+    // 0 = active, 1 = suspended
+    private Integer status;
     private Timestamp createdAt;
     private Integer createdBy;
+    private String createdByName;
     private boolean isDeleted;
     private Timestamp deletedAt;
     private Integer deletedBy;
+    private String deletedByName;
     private Integer updatedBy;
     private Timestamp updatedAt;
-    private Integer test;
+    private String updatedByName;
+   
 }
