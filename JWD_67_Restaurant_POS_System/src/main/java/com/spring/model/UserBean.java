@@ -35,6 +35,7 @@ public class UserBean {
     private Integer roleId;
     // 0 = active, 1 = suspended
     private Integer status;
+    private Integer failedLoginAttempts;
     private Timestamp createdAt;
     private Integer createdBy;
     private String createdByName;

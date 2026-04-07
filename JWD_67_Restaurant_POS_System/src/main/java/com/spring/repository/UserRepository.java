@@ -39,6 +39,7 @@ public class UserRepository {
                     user.setPassword(rs.getString("password"));
                     user.setRoleId(rs.getInt("role_id"));
                     user.setStatus(rs.getInt("status"));
+                    user.setFailedLoginAttempts(rs.getObject("failed_login_attempts", Integer.class));
                     user.setCreatedAt(rs.getTimestamp("created_at"));
                     user.setCreatedBy(rs.getObject("created_by", Integer.class));
                     user.setDeleted(rs.getBoolean("is_deleted"));
@@ -49,6 +50,35 @@ public class UserRepository {
             System.err.println("Database Error (findByEmail): " + e.getMessage());
         }
         return null;
+    }
+
+    public boolean existsActiveByEmail(String email) {
+        String sql = "SELECT COUNT(*) FROM user WHERE LOWER(email) = ? AND is_deleted = 0";
+        try (Connection con = dataSource.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, email);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean existsActiveByEmailExceptId(String email, int userId) {
+        String sql = "SELECT COUNT(*) FROM user WHERE LOWER(email) = ? AND is_deleted = 0 AND user_id <> ?";
+        try (Connection con = dataSource.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, email);
+            ps.setInt(2, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     public List<UserBean> findAll() {
@@ -80,6 +110,7 @@ public class UserRepository {
                 user.setEmail(rs.getString("email"));
                 user.setRoleId(rs.getInt("role_id"));
                 user.setStatus(rs.getInt("status"));
+                user.setFailedLoginAttempts(rs.getObject("failed_login_attempts", Integer.class));
                 user.setCreatedAt(rs.getTimestamp("created_at"));
                 user.setCreatedBy(rs.getObject("created_by", Integer.class));
                 user.setCreatedByName(rs.getString("created_by_name"));
@@ -169,8 +200,8 @@ public class UserRepository {
     }
 
     public void save(UserBean user) {
-        String sql = "INSERT INTO user (user_name, password, email, role_id, status, created_by, created_at, is_deleted) " +
-                     "VALUES (?, ?, ?, ?, 0, ?, CURRENT_TIMESTAMP, 0)";
+        String sql = "INSERT INTO user (user_name, password, email, role_id, status, failed_login_attempts, created_by, created_at, is_deleted) " +
+                     "VALUES (?, ?, ?, ?, 0, 0, ?, CURRENT_TIMESTAMP, 0)";
         try {
             // FIXED: Using the injected jdbcTemplate instance instead of static call
             jdbcTemplate.update(sql,
@@ -245,6 +276,7 @@ public class UserRepository {
                     user.setPassword(rs.getString("password"));
                     user.setRoleId(rs.getInt("role_id"));
                     user.setStatus(rs.getInt("status"));
+                    user.setFailedLoginAttempts(rs.getObject("failed_login_attempts", Integer.class));
                     return user;
                 }
             }
@@ -253,13 +285,43 @@ public class UserRepository {
     }
 
     public void updateStatus(int userId, int status, Integer updatedBy) {
-        String sql = "UPDATE user SET status = ?, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE user_id = ?";
+        String sql = "UPDATE user " +
+                     "SET status = ?, " +
+                     "    failed_login_attempts = CASE WHEN ? = 0 THEN 0 ELSE failed_login_attempts END, " +
+                     "    updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE user_id = ?";
         try (Connection con = dataSource.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, status);
-            if (updatedBy != null) ps.setInt(2, updatedBy);
-            else ps.setNull(2, java.sql.Types.INTEGER);
-            ps.setInt(3, userId);
+            ps.setInt(2, status);
+            if (updatedBy != null) ps.setInt(3, updatedBy);
+            else ps.setNull(3, java.sql.Types.INTEGER);
+            ps.setInt(4, userId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void resetFailedLoginAttempts(int userId) {
+        String sql = "UPDATE user SET failed_login_attempts = 0 WHERE user_id = ?";
+        try (Connection con = dataSource.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void incrementFailedAttemptsAndAutoSuspend(int userId) {
+        String sql = "UPDATE user " +
+                     "SET failed_login_attempts = COALESCE(failed_login_attempts, 0) + 1, " +
+                     "    status = CASE WHEN COALESCE(failed_login_attempts, 0) + 1 >= 5 THEN 1 ELSE status END, " +
+                     "    updated_at = CURRENT_TIMESTAMP " +
+                     "WHERE user_id = ?";
+        try (Connection con = dataSource.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, userId);
             ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();

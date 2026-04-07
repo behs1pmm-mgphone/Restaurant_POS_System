@@ -76,13 +76,16 @@ public class UserController {
 
         // Pass the Admin's ID as the second argument
         if (loginUser != null) {
-            userService.addUser(user, loginUser.getUserId());
+            String error = userService.addUser(user, loginUser.getUserId());
+            if (error != null) {
+                return "redirect:/admin/users?error=" + error;
+            }
         } else {
             // Fallback or error handling if session expired
             return "redirect:/login";
         }
 
-        return "redirect:/admin/users";
+        return "redirect:/admin/users?success=created";
     }
 
     // FIXED: Changed path from "/admin/users/update" to "/users/update"
@@ -94,8 +97,11 @@ public class UserController {
 
         if (loginUser != null) {
             // 2. Pass the user object AND the Admin's ID to the service
-            userService.updateUser(user, loginUser.getUserId());
-            return "redirect:/admin/users?success";
+            String error = userService.updateUser(user, loginUser.getUserId());
+            if (error != null) {
+                return "redirect:/admin/users?error=" + error;
+            }
+            return "redirect:/admin/users?success=updated";
         }
 
         // If session expired, send them back to login

@@ -47,14 +47,10 @@ public class AuthController {
             return "login";
         }
 
-        // Updated: Only passing email and password to the service for BCrypt verification
-        UserBean user = userService.login(userBean.getEmail(), userBean.getPassword());
+        UserService.LoginResult loginResult = userService.login(userBean.getEmail(), userBean.getPassword());
+        UserBean user = loginResult.getUser();
 
         if (user != null) {
-            if (user.getStatus() != null && user.getStatus() == 1) {
-                model.addAttribute("error", "Your account is suspended. Please contact admin.");
-                return "login";
-            }
             session.setAttribute("loginUser", user);
             Integer roleId = user.getRoleId();
 
@@ -76,6 +72,9 @@ public class AuthController {
                 default:
                     return "redirect:/home";
             }
+        } else if ("suspended".equals(loginResult.getStatus())) {
+            model.addAttribute("error", "Your account is suspended. Please contact admin.");
+            return "login";
         } else {
             model.addAttribute("error", "Invalid Email or Password!");
             return "login";

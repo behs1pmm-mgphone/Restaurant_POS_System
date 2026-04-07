@@ -31,10 +31,33 @@ public class UserService {
         return userRepository.findActiveUsersPageByName(keyword, offset, limit);
     }
 
+    public static class LoginResult {
+        private final UserBean user;
+        private final String status; // success, invalid, suspended
 
-    public UserBean login(String email, String rawPassword) {
+        public LoginResult(UserBean user, String status) {
+            this.user = user;
+            this.status = status;
+        }
+
+        public UserBean getUser() {
+            return user;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+    }
+
+    private String normalizeEmail(String email) {
+        if (email == null) return "";
+        return email.strip().replaceAll("\\s+", "").toLowerCase();
+    }
+
+
+    public LoginResult login(String email, String rawPassword) {
         if (email == null || rawPassword == null) {
-            return null;
+            return new LoginResult(null, "invalid");
         }
 
         // Use strip() to remove Unicode whitespace (Chrome autofill can include it)
@@ -44,6 +67,10 @@ public class UserService {
         UserBean user = userRepository.findByEmail(normalizedEmail);
 
         if (user != null) {
+            if (user.getStatus() != null && user.getStatus() == 1) {
+                return new LoginResult(null, "suspended");
+            }
+
             // Debugging logs to verify password matching issues
             System.out.println("DEBUG: Password typed in browser: [" + normalizedPassword + "]");
             System.out.println("DEBUG: Hash stored in Database: [" + user.getPassword() + "]");
@@ -51,7 +78,7 @@ public class UserService {
             String stored = user.getPassword();
             if (stored == null || stored.isBlank()) {
                 System.out.println("DEBUG: No password stored for user!");
-                return null;
+                return new LoginResult(null, "invalid");
             }
 
             // Support both BCrypt-hashed passwords and legacy plain-text passwords.
@@ -60,12 +87,14 @@ public class UserService {
             try {
                 if (looksBcrypt) {
                     if (BCrypt.checkpw(normalizedPassword, stored)) {
-                        return user;
+                        userRepository.resetFailedLoginAttempts(user.getUserId());
+                        return new LoginResult(user, "success");
                     }
                 } else {
                     // Legacy fallback (plain text stored in DB)
                     if (normalizedPassword.equals(stored)) {
-                        return user;
+                        userRepository.resetFailedLoginAttempts(user.getUserId());
+                        return new LoginResult(user, "success");
                     }
                 }
             } catch (IllegalArgumentException e) {
@@ -73,16 +102,32 @@ public class UserService {
                 System.out.println("DEBUG: Stored password is not a valid BCrypt hash.");
             }
 
+            userRepository.incrementFailedAttemptsAndAutoSuspend(user.getUserId());
+            UserBean latest = userRepository.findById(user.getUserId());
+            if (latest != null && latest.getStatus() != null && latest.getStatus() == 1) {
+                return new LoginResult(null, "suspended");
+            }
+
             System.out.println("DEBUG: Password mismatch!");
-            return null;
+            return new LoginResult(null, "invalid");
         }
-        return null;
+        return new LoginResult(null, "invalid");
     }
 
 
-    public void addUser(UserBean user, Integer adminId) {
+    public String addUser(UserBean user, Integer adminId) {
+        if (user == null) return "invalid_input";
+        if (user.getUserName() == null || user.getUserName().isBlank()) return "name_required";
+        if (user.getEmail() == null || user.getEmail().isBlank()) return "email_required";
+        if (user.getRoleId() == null || user.getRoleId() < 1 || user.getRoleId() > 4) return "invalid_role";
+
+        String email = normalizeEmail(user.getEmail());
+        if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) return "invalid_email";
+        if (userRepository.existsActiveByEmail(email)) return "email_exists";
+
         // 1. Set the creator ID from the session
         user.setCreatedBy(adminId);
+        user.setEmail(email);
 
         // 2. Hash the password before saving
         // This ensures the plain text password is never stored
@@ -91,6 +136,7 @@ public class UserService {
 
         // 3. Send to Repository
         userRepository.save(user);
+        return null;
     }
 
     public String getDefaultPassword() {
@@ -98,20 +144,32 @@ public class UserService {
     }
 
 
-    public void updateUser(UserBean user, Integer adminId) {
+    public String updateUser(UserBean user, Integer adminId) {
+        if (user == null || user.getUserId() == null) return "invalid_input";
+        if (user.getUserName() == null || user.getUserName().isBlank()) return "name_required";
+        if (user.getEmail() == null || user.getEmail().isBlank()) return "email_required";
+        if (user.getRoleId() == null || user.getRoleId() < 1 || user.getRoleId() > 4) return "invalid_role";
+
+        String email = normalizeEmail(user.getEmail());
+        if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) return "invalid_email";
+        if (userRepository.existsActiveByEmailExceptId(email, user.getUserId())) return "email_exists";
+
         // 1. Fetch the existing record from the database to protect the password
         UserBean existingUser = userRepository.findById(user.getUserId());
 
         if (existingUser != null) {
             // 2. Keep the old password (since the edit modal has no password field)
             user.setPassword(existingUser.getPassword());
+            user.setEmail(email);
 
             // 3. Set the Admin ID who is performing this update
             user.setUpdatedBy(adminId);
 
             // 4. Save the changes through the repository
             userRepository.update(user);
+            return null;
         }
+        return "user_not_found";
     }
 
 

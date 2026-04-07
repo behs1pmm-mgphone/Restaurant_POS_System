@@ -162,6 +162,24 @@
 
             <div class="p-10">
                 <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 p-8 overflow-x-hidden">
+                    <div th:if="${param.error}" class="mb-4 p-3 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm font-semibold">
+                        <span th:switch="${param.error[0]}">
+                            <span th:case="'email_exists'">Email already exists. Please use a different email.</span>
+                            <span th:case="'email_required'">Email is required.</span>
+                            <span th:case="'invalid_email'">Email format is invalid.</span>
+                            <span th:case="'name_required'">User name is required.</span>
+                            <span th:case="'invalid_role'">Selected role is invalid.</span>
+                            <span th:case="'user_not_found'">User was not found.</span>
+                            <span th:case="*">Unable to save user. Please try again.</span>
+                        </span>
+                    </div>
+                    <div th:if="${param.success}" class="mb-4 p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-semibold">
+                        <span th:switch="${param.success[0]}">
+                            <span th:case="'created'">User created successfully.</span>
+                            <span th:case="'updated'">User updated successfully.</span>
+                            <span th:case="*">Action completed successfully.</span>
+                        </span>
+                    </div>
                     <table id="userTable" class="w-full text-left table-auto">
                         <thead>
                             <tr class="text-slate-400 text-[10px] uppercase tracking-[0.3em] font-black border-b border-slate-50">
