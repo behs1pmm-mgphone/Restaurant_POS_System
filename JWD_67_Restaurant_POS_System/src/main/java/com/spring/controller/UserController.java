@@ -31,7 +31,11 @@ public class UserController {
 
         List<UserBean> users = userService.getAllUsers();
         model.addAttribute("users", users);
-        model.addAttribute("userBean", new UserBean());
+        
+        UserBean userBean = new UserBean();
+        userBean.setPassword(userService.getDefaultPassword());
+        
+        model.addAttribute("userBean", userBean);
         return "admin-users";
     }
 

@@ -3,6 +3,7 @@ package com.spring.service;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +15,9 @@ public class UserService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Value("${app.default-password:User@123}")
+    private String defaultPassword;
 
     public List<UserBean> getAllUsers() {
         return userRepository.findAll();
@@ -45,11 +49,15 @@ public class UserService {
 
         // 2. Hash the password before saving
         // This ensures the plain text password is never stored
-        String hashedPassword = BCrypt.hashpw("User@123", BCrypt.gensalt());
+        String hashedPassword = BCrypt.hashpw(defaultPassword, BCrypt.gensalt());
         user.setPassword(hashedPassword);
 
         // 3. Send to Repository
         userRepository.save(user);
+    }
+
+    public String getDefaultPassword() {
+        return defaultPassword;
     }
 
 

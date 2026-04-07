@@ -82,7 +82,7 @@
 
         <aside class="w-72 sidebar-gradient text-white flex flex-col shadow-2xl relative shrink-0">
             <div class="absolute top-0 left-0 w-32 h-32 bg-white/5 rounded-full -ml-16 -mt-16"></div>
-
+            
             <div class="p-10 flex flex-col items-center relative z-10 border-b border-white/10">
                 <div class="w-20 h-20 rounded-[2rem] bg-emerald-500/20 backdrop-blur-md border border-white/20 flex items-center justify-center text-3xl font-black shadow-2xl mb-4 group hover:scale-110 transition-transform cursor-pointer">
                     <span class="text-emerald-400 group-hover:text-white transition-colors"
@@ -108,13 +108,13 @@
                     <span class="font-semibold">Area Management</span>
                 </a>
                 <a th:href="@{/admin/menu}" class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group">
-					<i class="fas fa-utensils text-emerald-500/50 group-hover:text-emerald-400 transition-colors"></i>
-					<span class="font-semibold opacity-70 group-hover:opacity-100">Menu Catalog</span>
-				</a>
+                    <i class="fas fa-utensils text-emerald-500/50 group-hover:text-emerald-400 transition-colors"></i>
+                    <span class="font-semibold opacity-70 group-hover:opacity-100">Menu Catalog</span>
+                </a>
                 <a th:href="@{/admin/reports/daily}" class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group">
-					<i class="fas fa-chart-pie text-emerald-500/50 group-hover:text-emerald-400 transition-colors"></i>
-					<span class="font-semibold opacity-70 group-hover:opacity-100">Reports</span>
-				</a>
+                    <i class="fas fa-chart-pie text-emerald-500/50 group-hover:text-emerald-400 transition-colors"></i>
+                    <span class="font-semibold opacity-70 group-hover:opacity-100">Reports</span>
+                </a>
             </nav>
 
             <div class="p-8 border-t border-white/10">
@@ -123,7 +123,7 @@
                 </a>
             </div>
         </aside>
-
+        
         <main class="flex-1 flex flex-col overflow-y-auto">
             <header class="h-20 bg-white/80 backdrop-blur-md px-10 flex justify-between items-center border-b border-slate-200 sticky top-0 z-20 shrink-0">
                 <div class="flex items-center gap-5">
@@ -177,6 +177,7 @@
                                                 th:data-role="${user.roleId}">
                                             <i class="far fa-edit"></i>
                                         </button>
+                                        
                                         <button type="button" th:onclick="'confirmDelete(' + ${user.userId} + ')'"
                                            class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
                                             <i class="far fa-trash-alt"></i>
@@ -197,12 +198,20 @@
             <form th:action="@{/admin/users/add}" th:object="${userBean}" method="post" class="space-y-4">
                 <input type="text" th:field="*{userName}" placeholder="Full Name" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-emerald-500 text-sm" required>
                 <input type="email" th:field="*{email}" placeholder="Email Address" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-emerald-500 text-sm" required>
-                <input type="password" th:field="*{password}" placeholder="Password" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-emerald-500 text-sm" required>
+             <!--  <input type="password" th:field="*{password}" placeholder="Password" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-emerald-500 text-sm" required> --> 
+             
+             <input type="text"
+       name="password"
+       th:value="${userBean.password}"
+       placeholder="Password"
+       class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-emerald-500 text-sm"
+       required>
+              
                 <select th:field="*{roleId}" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-emerald-500 text-sm font-bold">
                     <option value="1">Administrator</option>
                     <option value="2">Waiter</option>
                     <option value="3">Cashier</option>
-                    <option value="3">Kitchen</option>
+                    <option value="4">Kitchen</option>
                 </select>
                 <div class="flex gap-4 pt-4">
                     <button type="submit" class="flex-1 bg-emerald-500 text-white p-4 rounded-2xl font-bold text-sm shadow-lg hover:bg-emerald-600 transition-all">Save User</button>
@@ -212,86 +221,38 @@
         </div>
     </div>
 
-    <div id="editModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-        <div class="bg-white rounded-[2.5rem] w-full max-w-md p-10 shadow-2xl">
-            <h2 class="text-xl font-black mb-6 text-slate-800">Edit Staff Info</h2>
-            <form th:action="@{/admin/users/update}" method="post" class="space-y-4">
-                <input type="hidden" id="editUserId" name="userId">
-                <div class="space-y-1">
-                    <label class="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Full Name</label>
-                    <input type="text" id="editUserName" name="userName" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-emerald-500 text-sm" required>
-                </div>
-                <div class="space-y-1">
-                    <label class="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Email Address</label>
-                    <input type="email" id="editEmail" name="email" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-emerald-500 text-sm" required>
-                </div>
-                <div class="space-y-1">
-                    <label class="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Role</label>
-                    <select id="editRoleId" name="roleId" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-emerald-500 text-sm font-bold">
-                        <option value="1">Administrator</option>
-                        <option value="2">Waiter</option>
-                        <option value="3">Cashier</option>
-                        <option value="3">Kitchen</option>
-                    </select>
-                </div>
-                <div class="flex gap-4 pt-4">
-                    <button type="submit" class="flex-1 bg-emerald-500 text-white p-4 rounded-2xl font-bold text-sm shadow-lg hover:bg-emerald-600 transition-all">Update Changes</button>
-                    <button type="button" class="close-modal bg-slate-100 text-slate-500 px-6 rounded-2xl font-bold text-sm hover:bg-slate-200 transition-all">Cancel</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
-    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script>
-        $(document).ready(function() {
-            // Sidebar Toggle
-            $('#sidebarToggle').on('click', function() {
-                $('#dashboardWrapper').toggleClass('sidebar-hidden');
-            });
-
-            // DataTables
-            $('#userTable').DataTable({
-                "pageLength": 5,
-                "lengthChange": false,
-                "language": {
-                    "search": "",
-                    "searchPlaceholder": "Search staff records...",
-                    "paginate": { "next": '<i class="fas fa-chevron-right"></i>', "previous": '<i class="fas fa-chevron-left"></i>' }
-                }
-            });
-
-            // Open Add Modal
-            $('#openAddModal').on('click', function() { $('#userModal').removeClass('hidden'); });
-
-            // Open Edit Modal with Data
-            $(document).on('click', '.edit-user-btn', function() {
-                const id = $(this).data('id');
-                const name = $(this).data('name');
-                const email = $(this).data('email');
-                const role = $(this).data('role');
-
-                $('#editUserId').val(id);
-                $('#editUserName').val(name);
-                $('#editEmail').val(email);
-                $('#editRoleId').val(role);
-
-                $('#editModal').removeClass('hidden');
-            });
-
-            // Close all Modals
-            $('.close-modal').on('click', function() {
-                $('#userModal, #editModal').addClass('hidden');
-            });
-        });
-
         // Function to handle delete without exposing URL on hover
         function confirmDelete(id) {
             if (confirm('Confirm deletion?')) {
                 window.location.href = '/admin/users/delete/' + id;
             }
         }
+
+        // Logic to Open/Close the Modal
+        const modal = document.getElementById('userModal');
+        const openBtn = document.getElementById('openAddModal');
+        const closeBtns = document.querySelectorAll('.close-modal');
+
+        // Show modal when clicking "Add New User"
+        openBtn.addEventListener('click', () => {
+            modal.classList.remove('hidden');
+        });
+
+        // Hide modal when clicking "Cancel"
+        closeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+        });
+
+        // Sidebar Toggle Logic
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const dashboardWrapper = document.getElementById('dashboardWrapper');
+
+        sidebarToggle.addEventListener('click', () => {
+            dashboardWrapper.classList.toggle('sidebar-hidden');
+        });
     </script>
-</body>
+</body> 
 </html>
