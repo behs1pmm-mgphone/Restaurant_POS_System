@@ -327,4 +327,16 @@ public class UserRepository {
             e.printStackTrace();
         }
     }
+
+    public int updatePassword(int userId, String newEncodedPassword) {
+        String sql = "UPDATE user SET password = ? WHERE user_id = ?";
+        try {
+            // password ကို update လုပ်ပြီး ဘယ် user လဲဆိုတာ ID နဲ့ စစ်ပါတယ်
+            return jdbcTemplate.update(sql, newEncodedPassword, userId);
+        } catch (Exception e) {
+            System.out.println("Error updating password: " + e.getMessage());
+            e.printStackTrace();
+            return 0;
+        }
+    }
 }
