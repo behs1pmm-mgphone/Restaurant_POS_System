@@ -1,14 +1,12 @@
 package com.spring.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 
 import com.spring.model.UserBean;
 import com.spring.repository.MenuItemRepository;
@@ -92,59 +90,6 @@ public class AuthController {
         model.addAttribute("totalMenuItems", menuItemRepository.countAllMenuItems());
 
         return "admin-dashboard";
-    }
-
-    @PostMapping("/admin/update-profile")
-    public String updateAdminProfile(
-            @RequestParam("userName") String userName,
-            @RequestParam("email") String email,
-            @RequestParam(required = false) String password,
-            HttpSession session,
-            Model model) {
-
-        UserBean sessionUser = (UserBean) session.getAttribute("loginUser");
-        if (sessionUser == null) return "redirect:/login";
-
-        // --- MANUAL VALIDATION ---
-        if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
-            return "redirect:/admin/dashboard?error=Invalid+Email";
-        }
-
-        if (password != null && !password.trim().isEmpty()) {
-            boolean hasUppercase = !password.equals(password.toLowerCase());
-            boolean hasNumber = password.matches(".*\\d.*");
-            // Added special character check to match your earlier security rules
-            boolean hasSpecial = password.matches(".*[!@#$%^&*()_+].*");
-
-            if (password.length() < 8 || !hasUppercase || !hasNumber || !hasSpecial) {
-                return "redirect:/admin/dashboard?error=Weak+Password";
-            }
-        }
-
-        // --- PROCEED TO UPDATE ---
-        UserBean existingUser = userService.getUserById(sessionUser.getUserId());
-
-        if (existingUser != null) {
-            existingUser.setUserName(userName);
-            existingUser.setEmail(email);
-
-            // Handle Password Change
-            if (password != null && !password.trim().isEmpty()) {
-                // Hash the password here before passing to updateUser
-                // OR let updateUser handle it (if you modify the service)
-                String hashed = BCrypt.hashpw(password, BCrypt.gensalt());
-                existingUser.setPassword(hashed);
-            }
-
-            // FIXED: Added the second argument (sessionUser.getUserId())
-            // to tell the service WHO is making this update.
-            userService.updateUser(existingUser, sessionUser.getUserId());
-
-            // Refresh session with updated data
-            session.setAttribute("loginUser", existingUser);
-        }
-
-        return "redirect:/admin/dashboard?success=Profile+Updated";
     }
 
     @GetMapping("/logout")

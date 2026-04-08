@@ -3,6 +3,7 @@ package com.spring.controller;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,8 +12,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.spring.model.UserBean;
+import com.spring.repository.UserRepository;
 import com.spring.service.UserService;
 
 import jakarta.servlet.http.HttpSession;
@@ -23,6 +26,9 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @GetMapping("/users")
     public String listUsers(Model model,
@@ -62,10 +68,10 @@ public class UserController {
         }
         model.addAttribute("startPage", startPage);
         model.addAttribute("endPage", endPage);
-        
+
         UserBean userBean = new UserBean();
         userBean.setPassword(userService.getDefaultPassword());
-        
+
         model.addAttribute("userBean", userBean);
         return "admin-users";
     }
@@ -128,5 +134,96 @@ public class UserController {
 
         userService.updateUserStatus(userId, status, loginUser.getUserId());
         return "redirect:/admin/users";
+    }
+
+    @GetMapping("/profile")
+    public String viewProfile(Model model, HttpSession session) {
+        // Session ထဲက loginUser ကို ယူတယ်
+        UserBean loginUser = (UserBean) session.getAttribute("loginUser");
+
+        // Login မဝင်ထားရင် login page ကို ပို့မယ်
+        if (loginUser == null) {
+            return "redirect:/login";
+        }
+
+        // "user" ဆိုတဲ့ နာမည်နဲ့ profile.html ဆီ ပို့ပေးလိုက်မယ်
+        model.addAttribute("user", loginUser);
+
+        return "profile";
+    }
+
+    @PostMapping("/profile/change-password")
+    public String changePassword(
+            @RequestParam("oldPassword") String oldPassword,
+            @RequestParam("newPassword") String newPassword,
+            @RequestParam("confirmPassword") String confirmPassword,
+            HttpSession session,
+            RedirectAttributes ra) {
+
+        // 1. Session Check
+        UserBean sessionUser = (UserBean) session.getAttribute("loginUser");
+        if (sessionUser == null) return "redirect:/login";
+
+        // 2. Password Match Check
+        if (!newPassword.equals(confirmPassword)) {
+            ra.addFlashAttribute("error", "New passwords do not match!");
+            return "redirect:/admin/profile";
+        }
+
+        // 3. Database ထဲက လက်ရှိ User Data ကို Repository ကနေ တိုက်ရိုက်ယူမယ်
+        // (မှတ်ချက် - getUserById method သည်လည်း Repository ထဲမှာ ရှိနေရပါမည်)
+        UserBean existingUser = userRepository.findById(sessionUser.getUserId());
+
+        if (existingUser != null) {
+
+            // 4. Old Password မှန်မမှန် BCrypt နဲ့ အရင်စစ်မယ်
+            if (!BCrypt.checkpw(oldPassword, existingUser.getPassword())) {
+                ra.addFlashAttribute("error", "Current password is incorrect!");
+                return "redirect:/admin/profile";
+            }
+
+            // 5. Complexity Validation
+            if (newPassword.length() < 8) {
+                ra.addFlashAttribute("error", "Password must be at least 8 characters long!");
+                return "redirect:/admin/profile";
+            }
+            if (!newPassword.matches(".*[A-Z].*")) {
+                ra.addFlashAttribute("error", "Password must contain at least one uppercase letter!");
+                return "redirect:/admin/profile";
+            }
+            if (!newPassword.matches(".*[0-9].*")) {
+                ra.addFlashAttribute("error", "Password must contain at least one number!");
+                return "redirect:/admin/profile";
+            }
+            if (!newPassword.matches(".*[!@#$%^&*(),.?\":{}|<>].*")) {
+                ra.addFlashAttribute("error", "Password must contain at least one special character!");
+                return "redirect:/admin/profile";
+            }
+
+            try {
+                // 6. Password အသစ်ကို Hash လုပ်မယ်
+                String hashedNewPassword = BCrypt.hashpw(newPassword, BCrypt.gensalt());
+
+                // 7. Repository Method ကို တိုက်ရိုက်ခေါ်ပြီး Database မှာ သိမ်းမယ်
+                int result = userRepository.updatePassword(sessionUser.getUserId(), hashedNewPassword);
+
+                if (result > 0) {
+                    // 8. Session Update လုပ်ပြီး Success ပြမယ်
+                    existingUser.setPassword(hashedNewPassword);
+                    session.setAttribute("loginUser", existingUser);
+                    ra.addFlashAttribute("success", "Password changed successfully!");
+                } else {
+                    ra.addFlashAttribute("error", "Database update failed!");
+                }
+
+            } catch (Exception e) {
+                ra.addFlashAttribute("error", "Error: " + e.getMessage());
+            }
+
+        } else {
+            ra.addFlashAttribute("error", "User not found!");
+        }
+
+        return "redirect:/admin/profile";
     }
 }
