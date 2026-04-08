@@ -46,5 +46,6 @@ public class UserBean {
     private Integer updatedBy;
     private Timestamp updatedAt;
     private String updatedByName;
+    private String Test;
    
 }
