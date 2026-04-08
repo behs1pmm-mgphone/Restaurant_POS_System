@@ -17,18 +17,6 @@ public class RestaurantTableRepository {
         return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM restaurant_table", Long.class);
     }
 
-    public List<RestaurantTable> findTablesByArea(Integer areaId) {
-        String sql = "SELECT * FROM restaurant_table WHERE area_id = ?";
-        return jdbcTemplate.query(sql, (rs, rowNum) -> {
-            RestaurantTable t = new RestaurantTable();
-            t.setRestaurant_table_id(rs.getInt("restaurant_table_id"));
-            t.setTable_number(rs.getString("table_number"));
-            t.setStatus(rs.getString("status"));
-            t.setArea_id(rs.getInt("area_id"));
-            return t;
-        }, areaId);
-    }
-
     public boolean existsByTableNumber(String tableNumber) {
         String sql = "SELECT COUNT(*) FROM restaurant_table WHERE table_number = ?";
         Integer count = jdbcTemplate.queryForObject(sql, Integer.class, tableNumber);
@@ -42,10 +30,6 @@ public class RestaurantTableRepository {
 
     public int updateTableStatus(Integer id, String status) {
         return jdbcTemplate.update("UPDATE restaurant_table SET status = ? WHERE restaurant_table_id = ?", status, id);
-    }
-
-    public int deleteTable(Integer id) {
-        return jdbcTemplate.update("DELETE FROM restaurant_table WHERE restaurant_table_id = ?", id);
     }
 
     public long countByStatus(String status) {
@@ -78,6 +62,31 @@ public class RestaurantTableRepository {
         } catch (Exception e) {
             return Optional.empty();
         }
+    }
+
+    public List<RestaurantTable> findTablesByArea(Integer areaId) {
+
+        String sql = "SELECT * FROM restaurant_table WHERE area_id = ? AND is_deleted = 0";
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            RestaurantTable t = new RestaurantTable();
+            t.setRestaurant_table_id(rs.getInt("restaurant_table_id"));
+            t.setTable_number(rs.getString("table_number"));
+            t.setStatus(rs.getString("status"));
+            t.setArea_id(rs.getInt("area_id"));
+            return t;
+        }, areaId);
+    }
+
+    public int softDeleteTable(Integer tableId, Integer adminId) {
+        String sql = "UPDATE restaurant_table " +
+                     "SET is_deleted = 1, " +
+                     "    deleted_at = NOW(), " +
+                     "    deleted_by = ?, " +
+                     "    status = 'Disabled' " +
+                     "WHERE restaurant_table_id = ? AND is_deleted = 0";
+
+        return jdbcTemplate.update(sql, adminId, tableId);
     }
 
 }

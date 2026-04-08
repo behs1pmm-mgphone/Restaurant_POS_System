@@ -62,4 +62,16 @@ public class AreaRepository {
         String sql = "UPDATE area SET is_deleted = 1, deleted_by = ?, deleted_at = NOW() WHERE area_id = ?";
         jdbcTemplate.update(sql, adminId, id);
     }
+
+    public int areaSoftDelete(int areaId, int userId) {
+        // I added spaces at the end of strings to prevent "SETis_deleted" errors
+        String sql = "UPDATE area " +
+                     "SET is_deleted = 1, " +
+                     "deleted_by = ?, " +
+                     "deleted_at = CURRENT_TIMESTAMP, " +
+                     "status = 'INACTIVE' " +
+                     "WHERE area_id = ? AND is_deleted = 0";
+
+        return jdbcTemplate.update(sql, userId, areaId);
+    }
 }

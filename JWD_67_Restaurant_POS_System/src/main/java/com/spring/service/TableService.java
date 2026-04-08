@@ -12,7 +12,7 @@ import com.spring.repository.RestaurantTableRepository;
 @Service
 public class TableService {
 
-    @Autowired
+	@Autowired
     private RestaurantTableRepository tableRepo;
 
     public List<RestaurantTable> getTablesByArea(Integer areaId) {
@@ -41,7 +41,7 @@ public class TableService {
         }
     }
 
-    public void deleteTable(Integer id) {
-        tableRepo.deleteTable(id);
+    public void softDeleteTable(Integer tableId, Integer adminId) {
+        tableRepo.softDeleteTable(tableId, adminId);
     }
 }

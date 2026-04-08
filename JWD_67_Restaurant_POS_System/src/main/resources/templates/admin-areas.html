@@ -205,7 +205,8 @@
                                th:classappend="${area.status == 'Disabled'
                                                 ? 'border-amber-200 text-amber-500 hover:bg-amber-500 hover:text-white'
                                                 : 'border-slate-100 text-slate-600 hover:bg-slate-800 hover:text-white'}"
-                               th:title="${area.status == 'Disabled' ? 'Enable Area' : 'Disable for Maintenance'}">
+                               th:title="${area.status == 'Disabled' ? 'Enable Area' : 'Disable for Maintenance'}"
+                               th:onclick="return confirm([[${area.status == 'Disabled' ? 'Enable ' + area.areaName + ' for service?' : 'Put ' + area.areaName + ' into maintenance mode? All tables inside will be hidden from the menu.'}]]);">
                                 <i th:class="${area.status == 'Disabled' ? 'fas fa-toggle-on' : 'fas fa-toggle-off'}"></i>
                             </a>
 
@@ -217,7 +218,7 @@
                             </button>
 
                             <a th:href="@{/admin/areas/delete/{id}(id=${area.maskedId})}"
-                               onclick="return confirm('Remove this area and all its configuration?')"
+                               th:onclick="return confirm('Remove [[${area.areaName}]] and all its configuration? This cannot be undone.');"
                                class="w-9 h-9 bg-white/80 backdrop-blur shadow-md border border-red-100 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-500 hover:text-white hover:scale-110 transition-all active:scale-90">
                                 <i class="fas fa-trash-alt text-xs"></i>
                             </a>

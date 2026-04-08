@@ -246,103 +246,148 @@
     </div>
 
     <script th:inline="javascript">
-        // Real-time WebSocket Logic
-        const socket = new SockJS('/ws-pos');
-        const stompClient = Stomp.over(socket);
-        stompClient.debug = null;
+    const socket = new SockJS('/ws-pos');
+    const stompClient = Stomp.over(socket);
+    stompClient.debug = null;
 
-        stompClient.connect({}, function (frame) {
-            stompClient.subscribe('/topic/table-updates', function (message) {
-                if (message.body === "REFRESH") {
-                    window.location.reload();
-                    return;
+    // Grab current Area ID from Thymeleaf to prevent wrong-room grid updates
+    const currentAreaId = /*[[${maskedAreaId}]]*/ '';
+
+    stompClient.connect({}, function (frame) {
+        // We listen to table-updates for everything
+        stompClient.subscribe('/topic/table-updates', function (message) {
+            const data = JSON.parse(message.body);
+            console.log("WebSocket Received:", data);
+
+            // --- 1. GLOBAL NOTIFICATION LOGIC ---
+            // This part runs regardless of which area the admin is currently viewing
+            if (data.action === "SHOW_NOTIFICATION") {
+                showGlobalToast(data.message, data.type);
+            }
+
+            // --- 2. GRID UPDATES ---
+            if (data.action === "DELETE") {
+                const card = document.getElementById('table-card-' + data.id);
+                if (card) {
+                    card.style.transform = "scale(0.5)";
+                    card.style.opacity = "0";
+                    setTimeout(() => card.remove(), 400);
                 }
-                const data = JSON.parse(message.body);
-                if (data.action === "DELETE") {
-                    const card = document.getElementById('table-card-' + data.id);
-                    if (card) {
-                        card.style.transform = "scale(0.5)";
-                        card.style.opacity = "0";
-                        setTimeout(() => card.remove(), 400);
-                    }
-                } else if (data.action === "UPDATE_STATUS") {
-                    updateTableUI(data.id, data.status);
-                } else if (data.action === "ADD") {
+            } else if (data.action === "UPDATE_STATUS") {
+                updateTableUI(data.id, data.status);
+            } else if (data.action === "ADD") {
+                // Only reload the table grid if the new table belongs to THIS area
+                if (data.maskedAreaId === currentAreaId) {
                     window.location.reload();
                 }
-            });
+            }
         });
+    });
 
-        function updateTableUI(id, status) {
-            const card = document.getElementById('table-card-' + id);
-            if (!card) return;
-            const badge = card.querySelector('.status-badge');
-            if (badge) badge.innerText = status;
+    // NEW FUNCTION: Manually injects a success/error toast into the page
+    function showGlobalToast(message, type) {
+        const container = document.querySelector('.toast-container');
+        if (!container) return;
 
-            // Updated to include 'table-disabled'
-            card.classList.remove('table-available', 'table-occupied', 'table-booked', 'table-maintenance', 'table-disabled');
-            card.classList.add('table-' + status.toLowerCase());
-        }
+        const isSuccess = type === 'SUCCESS';
+        const bgColor = isSuccess ? 'bg-emerald-500' : 'bg-red-500';
+        const textColor = isSuccess ? 'text-emerald-600' : 'text-red-600';
+        const icon = isSuccess ? 'fa-check' : 'fa-exclamation-triangle';
+        const label = isSuccess ? 'Success' : 'Notification';
 
-        // Modal Controls
-        function openAddTableModal() {
-            const modal = document.getElementById('addTableModal');
-            const content = document.getElementById('addTableContent');
-            modal.classList.remove('hidden');
-            setTimeout(() => { modal.classList.add('opacity-100'); content.classList.add('scale-100'); }, 10);
-        }
+        const toastHtml = `
+            <div class="js-alert animate-drop-down bg-white/90 backdrop-blur-xl p-6 rounded-[2rem] flex items-center gap-5 relative overflow-hidden mb-4 shadow-xl border border-white/20">
+                <div class="w-12 h-12 ${bgColor} text-white rounded-2xl flex items-center justify-center shadow-lg">
+                    <i class="fas ${icon} text-xl"></i>
+                </div>
+                <div class="pr-4">
+                    <p class="text-[10px] font-black uppercase tracking-[0.2em] ${textColor} mb-0.5">${label}</p>
+                    <p class="font-bold text-slate-800 text-base">${message}</p>
+                </div>
+                <div class="alert-progress ${bgColor}/30"></div>
+            </div>
+        `;
 
-        function closeAddTableModal() {
-            const modal = document.getElementById('addTableModal');
-            const content = document.getElementById('addTableContent');
-            modal.classList.remove('opacity-100'); content.classList.remove('scale-100');
-            setTimeout(() => { modal.classList.add('hidden'); }, 300);
-        }
+        const div = document.createElement('div');
+        div.innerHTML = toastHtml.trim();
+        const newToast = div.firstChild;
+        container.appendChild(newToast);
 
-        function openTableModal(el) {
-            const maskedId = el.getAttribute('data-id');
-            const num = el.getAttribute('data-number');
-            const maskedAreaId = /*[[${maskedAreaId}]]*/ '';
-            const modal = document.getElementById('tableModal');
-            const content = document.getElementById('modalContent');
-            document.getElementById('modalTitle').innerText = num;
-            const base = "/admin/tables/" + maskedId;
+        // Auto-remove after 4 seconds
+        setTimeout(() => {
+            newToast.classList.add('fade-out-up');
+            setTimeout(() => newToast.remove(), 700);
+        }, 4000);
+    }
 
-            // Set href for all status links including Disabled
-            document.getElementById('availLink').href = base + "/update-status/Available/" + maskedAreaId;
-            document.getElementById('occuLink').href = base + "/update-status/Occupied/" + maskedAreaId;
-            document.getElementById('bookLink').href = base + "/update-status/Booked/" + maskedAreaId;
-            document.getElementById('disabledLink').href = base + "/update-status/Disabled/" + maskedAreaId;
-            document.getElementById('deleteLink').href = base + "/delete/" + maskedAreaId;
+    function updateTableUI(id, status) {
+        const card = document.getElementById('table-card-' + id);
+        if (!card) return;
 
-            modal.classList.remove('hidden');
-            setTimeout(() => { modal.classList.add('opacity-100'); content.classList.add('scale-100'); }, 10);
-        }
+        const badge = card.querySelector('.status-badge');
+        if (badge) badge.innerText = status;
 
-        function closeModal() {
-            const modal = document.getElementById('tableModal');
-            const content = document.getElementById('modalContent');
-            modal.classList.remove('opacity-100'); content.classList.remove('scale-100');
-            setTimeout(() => { modal.classList.add('hidden'); }, 300);
-        }
+        card.classList.remove('table-available', 'table-occupied', 'table-booked', 'table-maintenance', 'table-disabled');
+        card.classList.add('table-' + status.toLowerCase());
+    }
 
-        // Alert auto-hide logic
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('.js-alert').forEach(alert => {
-                setTimeout(() => {
-                    alert.classList.add('fade-out-up');
-                    setTimeout(() => alert.remove(), 700);
-                }, 4000);
-            });
+    function openTableModal(el) {
+        const maskedTableId = el.getAttribute('data-id');
+        const num = el.getAttribute('data-number');
+        const modal = document.getElementById('tableModal');
+        const content = document.getElementById('modalContent');
+
+        document.getElementById('modalTitle').innerText = "Table " + num;
+
+        const deleteUrl = "/admin/tables/" + currentAreaId + "/delete/" + maskedTableId;
+        const statusBase = "/admin/tables/" + maskedTableId + "/update-status/";
+
+        document.getElementById('deleteLink').href = deleteUrl;
+        document.getElementById('availLink').href = statusBase + "Available/" + currentAreaId;
+        document.getElementById('occuLink').href = statusBase + "Occupied/" + currentAreaId;
+        document.getElementById('bookLink').href = statusBase + "Booked/" + currentAreaId;
+        document.getElementById('disabledLink').href = statusBase + "Disabled/" + currentAreaId;
+
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.add('opacity-100');
+            content.classList.add('scale-100');
+        }, 10);
+    }
+
+    function openAddTableModal() {
+        document.getElementById('addTableModal').classList.remove('hidden');
+        setTimeout(() => {
+            document.getElementById('addTableModal').classList.add('opacity-100');
+            document.getElementById('addTableContent').classList.add('scale-100');
+        }, 10);
+    }
+
+    function closeAddTableModal() {
+        document.getElementById('addTableModal').classList.remove('opacity-100');
+        document.getElementById('addTableContent').classList.remove('scale-100');
+        setTimeout(() => document.getElementById('addTableModal').classList.add('hidden'), 300);
+    }
+
+    function closeModal() {
+        document.getElementById('tableModal').classList.remove('opacity-100');
+        document.getElementById('modalContent').classList.remove('scale-100');
+        setTimeout(() => document.getElementById('tableModal').classList.add('hidden'), 300);
+    }
+
+    // Handle existing alerts (from server-side RedirectAttributes)
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.js-alert').forEach(alert => {
+            setTimeout(() => {
+                alert.classList.add('fade-out-up');
+                setTimeout(() => alert.remove(), 700);
+            }, 4000);
         });
+    });
 
-        // Sidebar Toggle logic
-        const toggleBtn = document.getElementById('sidebarToggle');
-        const wrapper = document.getElementById('mainWrapper');
-
-        toggleBtn.addEventListener('click', () => {
-            wrapper.classList.toggle('sidebar-hidden');
-        });
-    </script>
+    document.getElementById('sidebarToggle').addEventListener('click', () => {
+        document.getElementById('mainWrapper').classList.toggle('sidebar-hidden');
+    });
+</script>
 </body>
 </html>
