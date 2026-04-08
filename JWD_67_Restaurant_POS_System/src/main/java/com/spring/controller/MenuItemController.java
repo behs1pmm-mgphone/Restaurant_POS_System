@@ -50,15 +50,31 @@ public class MenuItemController {
     public String showMenuList(
             @RequestParam(name = "categoryId", required = false) Integer categoryId,
             @RequestParam(name = "search", required = false) String search,
+            // === ၁။ Page နဲ့ Size parameter များ လက်ခံရန် ထည့်သွင်းခြင်း ===
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size, 
             Model model, HttpSession session) {
 
         if (session.getAttribute("loginUser") == null) return "redirect:/login";
 
-        // FETCH ALL 19 ITEMS: Use 1000 to ensure nothing is cut off
+        // === ၂။ Offset ကို တွက်ချက်ခြင်း (ဥပမာ- Page 1 ဆိုရင် ၁၀ ခု ကျော်ရမယ်) ===
+        int offset = page * size;
+
+        // === ၃။ Repository ကို ခေါ်တဲ့အခါ 1000 အစား variable များ ပြောင်းလဲအသုံးပြုခြင်း ===
+     // Controller ထဲမှာ size ကို အများကြီးပေးထားလိုက်ပါ
         List<Map<String, Object>> items = menuService.getPaginatedItems(categoryId, search, 1000, 0);
+        model.addAttribute("items", items);
+        
+        // === ၄။ UI မှာ စာမျက်နှာအရေအတွက် တွက်ချက်ပြသရန် လိုအပ်သည့် Data များ ပို့ပေးခြင်း ===
+        long totalItems = menuService.getTotalCount(categoryId, search);
+        int totalPages = (int) Math.ceil((double) totalItems / size);
 
         model.addAttribute("items", items);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("pageSize", size);
         model.addAttribute("categories", categoryService.getAllActiveCategories());
+        
         return "menu-list";
     }
 
@@ -90,26 +106,42 @@ public class MenuItemController {
     @PostMapping("/save")
     public String saveItem(@RequestParam Map<String, Object> payload,
                            @RequestParam("file") MultipartFile file,
-                           HttpSession session) {
+                           HttpSession session,
+                           Model model) {
         UserBean user = (UserBean) session.getAttribute("loginUser");
 
-        if (user != null && !file.isEmpty()) {
+        if (user != null) {
+            String imageName = "default.png"; 
+
             try {
-                Path uploadPath = Paths.get(UPLOAD_DIR);
-                if (!Files.exists(uploadPath)) {
-                    Files.createDirectories(uploadPath);
+                // ၁။ ပုံ သိမ်းဆည်းခြင်း Logic
+                if (file != null && !file.isEmpty()) {
+                    Path uploadPath = Paths.get(UPLOAD_DIR);
+                    if (!Files.exists(uploadPath)) Files.createDirectories(uploadPath);
+                    
+                    imageName = file.getOriginalFilename();
+                    Path copyLocation = uploadPath.resolve(imageName);
+                    Files.copy(file.getInputStream(), copyLocation, StandardCopyOption.REPLACE_EXISTING);
                 }
-                String imageName = file.getOriginalFilename();
-                Path copyLocation = uploadPath.resolve(imageName);
-                Files.copy(file.getInputStream(), copyLocation, StandardCopyOption.REPLACE_EXISTING);
-
+                
+                // ၂။ Service ကို ခေါ်ပြီး Database သို့ သိမ်းခြင်း
+                // ဒီနေရာမှာ နာမည်တူနေရင် Service ကနေ RuntimeException ပစ်ပါလိမ့်မယ်
                 menuService.createItem(payload, imageName, user.getUserId());
+                
+                // အောင်မြင်ရင် success message နဲ့ ပြန်သွားမယ်
+                return "redirect:/admin/menu?success=Item added successfully";
 
-            } catch (IOException e) {
+            } catch (IOException e) { 
                 e.printStackTrace();
+                return "redirect:/admin/menu?error=File upload failed";
+            } catch (RuntimeException e) {
+                // ၃။ နာမည်တူခြင်း သို့မဟုတ် အခြား Business Logic Error များကို ဖမ်းယူခြင်း
+                // Error message ကို URL parameter အဖြစ် ပို့ပေးလိုက်ပါတယ်
+                return "redirect:/admin/menu?error=" + e.getMessage();
             }
         }
-        return "redirect:/admin/menu";
+        
+        return "redirect:/login";
     }
 
     @PostMapping("/update")
@@ -120,14 +152,9 @@ public class MenuItemController {
 
         if (user != null) {
             String imageName;
-
             if (!file.isEmpty()) {
                 try {
                     Path uploadPath = Paths.get(UPLOAD_DIR);
-                    if (!Files.exists(uploadPath)) {
-                        Files.createDirectories(uploadPath);
-                    }
-
                     imageName = file.getOriginalFilename();
                     Path filePath = uploadPath.resolve(imageName);
                     Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);

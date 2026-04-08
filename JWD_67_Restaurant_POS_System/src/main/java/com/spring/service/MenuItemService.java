@@ -35,29 +35,34 @@ public class MenuItemService {
 
     public void createItem(Map<String, Object> data, String img, int adminId) {
         String name = String.valueOf(data.getOrDefault("name", "Unnamed Item"));
+        
+        if (menuRepo.isNameExists(name)) {
+        throw new RuntimeException("Item name '" + name + "' already exists!");
+        }
         double price = Double.parseDouble(data.getOrDefault("price", "0").toString());
-        int stock = Integer.parseInt(data.getOrDefault("stock_quantity", "0").toString());
-        int catId = Integer.parseInt(data.getOrDefault("categoryId", data.getOrDefault("category_id", "1")).toString());
-        String status = String.valueOf(data.getOrDefault("status", "Available"));
+     
+        Object catObj = data.get("categoryId");
+        int catId = Integer.parseInt(catObj != null ? catObj.toString() : "1");
 
-        menuRepo.save(name, price, stock, catId, status, img, adminId);
+        String status = String.valueOf(data.getOrDefault("status", "Available"));
+        menuRepo.save(name, price, catId, status, img, adminId);
     }
 
     public void updateItem(Map<String, Object> data, String img, int adminId) {
         Object idObj = data.get("menu_item_id");
-        if (idObj == null) return;
+        if (idObj == null) return; 
 
         int id = Integer.parseInt(idObj.toString());
         String name = String.valueOf(data.getOrDefault("name", ""));
         double price = Double.parseDouble(data.getOrDefault("price", "0").toString());
-        int stock = Integer.parseInt(data.getOrDefault("stock_quantity", "0").toString());
 
-        Object catIdObj = data.get("categoryId") != null ? data.get("categoryId") : data.get("category_id");
-        int catId = Integer.parseInt(catIdObj != null ? catIdObj.toString() : "1");
-
+        Object catIdObj = data.get("categoryId");
+        if (catIdObj == null) {
+            catIdObj = data.get("category_id");
+        }
+         int catId = Integer.parseInt(catIdObj != null ? catIdObj.toString() : "1");
         String status = String.valueOf(data.getOrDefault("status", "Available"));
-
-        menuRepo.update(id, name, price, stock, catId, status, img, adminId);
+        menuRepo.update(id, name, price, catId, status, img, adminId);
     }
 
     public void removeRequestedItem(int id, int adminId) { menuRepo.softDelete(id, adminId); }

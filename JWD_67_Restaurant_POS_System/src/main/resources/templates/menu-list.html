@@ -58,6 +58,22 @@
     }
 
     .dataTables_filter, .dataTables_length { display: none; }
+    
+    /* Toast Animations */
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.toast-animate-in {
+    animation: slideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.toast-animate-out {
+    transition: all 0.5s ease-in;
+    transform: translateX(120%);
+    opacity: 0;
+}
 </style>
 </head>
 <body class="bg-[#F8FAFC] text-slate-800">
@@ -122,6 +138,37 @@
                     </button>
                 </div>
             </header>
+            
+            <!-- Header အောက်နား (Line 115 ဝန်းကျင်) မှာ ထည့်ပါ -->
+ <!-- Toast Container (ညာဘက်အပေါ်ထောင့်မှာ ကပ်ပေါ်မယ့်နေရာ) -->
+<div id="toastContainer" class="fixed top-5 right-5 z-[100] space-y-3">
+    
+    <!-- Success Toast -->
+    <div th:if="${param.success}" id="successToast" 
+         class="bg-white border-l-4 border-emerald-500 shadow-2xl rounded-2xl p-4 flex items-center gap-4 min-w-[320px] toast-animate-in">
+        <div class="bg-emerald-100 p-2 rounded-full text-emerald-600">
+            <i class="fas fa-check-circle text-lg"></i>
+        </div>
+        <div class="flex-1">
+            <p class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Success</p>
+            <p class="text-sm font-bold text-slate-700" th:text="${param.success}"></p>
+        </div>
+    </div>
+
+    <!-- Error Toast -->
+    <div th:if="${param.error}" id="errorToast" 
+         class="bg-white border-l-4 border-red-500 shadow-2xl rounded-2xl p-4 flex items-center gap-4 min-w-[320px] toast-animate-in">
+        <div class="bg-red-100 p-2 rounded-full text-red-600">
+            <i class="fas fa-exclamation-circle text-lg"></i>
+        </div>
+        <div class="flex-1">
+            <p class="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Error</p>
+            <p class="text-sm font-bold text-slate-700" th:text="${param.error}"></p>
+        </div>
+    </div>
+</div>
+
+
 
             <div class="p-10">
                 <div id="categoryContainer" class="flex items-center gap-3 mb-8 overflow-x-auto no-scrollbar pb-2">
@@ -140,47 +187,96 @@
                                 <th class="pb-6">Item Name</th>
                                 <th class="pb-6">Category</th>
                                 <th class="pb-6 text-center">Price</th>
-                                <th class="pb-6 text-center">Stock</th>
+                               <!--  <th class="pb-6 text-center">Stock</th> -->
                                 <th class="pb-6 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-50">
-                            <tr th:each="item : ${items}" class="hover:bg-slate-50/50 transition-all">
-                                <td class="py-6 font-extrabold text-slate-800 text-xs"></td>
-                                <td class="py-6">
-                                    <div class="w-12 h-12 rounded-2xl bg-slate-100 border-2 border-white shadow-sm overflow-hidden">
-                                        <img th:src="@{/admin/menu/display(img=${item['image']})}" class="w-full h-full object-cover">
-                                    </div>
-                                </td>
-                                <td class="py-6">
-                                    <span class="font-bold text-slate-700 text-sm" th:text="${item['name']}">Item Name</span>
-                                </td>
-                                <td class="py-6">
-                                    <span class="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-600 font-black text-[9px] uppercase tracking-wider"
-                                          th:text="${item['category_name']}">Category</span>
-                                </td>
-                                <td class="py-6 text-center">
-                                    <span class="font-black text-emerald-600 text-sm" th:text="${item['price']}">0</span>
-                                    <span class="text-[9px] text-emerald-400 ml-0.5">MMK</span>
-                                </td>
-                                <td class="py-6 text-center">
-                                    <span class="font-bold text-slate-600 text-sm" th:text="${item['stock_quantity']}">0</span>
-                                    <span class="text-[9px] text-slate-300 font-black uppercase ml-1">Qty</span>
-                                </td>
-                                <td class="py-6 text-right">
-                                    <div class="flex justify-end gap-2">
-                                        <button th:onclick="'openEditModal(' + ${item['menu_item_id']} + ')'"
-                                                class="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-xl transition-all">
-                                            <i class="far fa-edit"></i>
-                                        </button>
-                                        <button type="button" th:onclick="'confirmDelete(' + ${item['menu_item_id']} + ')'"
-                                           class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
-                                            <i class="far fa-trash-alt"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
+                       <tbody class="divide-y divide-slate-50">
+    <tr th:each="item : ${items}" class="hover:bg-slate-50/50 transition-all">
+        <td class="py-6 font-extrabold text-slate-800 text-xs"></td>
+        
+        <td class="py-6">
+            <div class="w-12 h-12 rounded-2xl bg-slate-100 border-2 border-white shadow-sm overflow-hidden">
+                <img th:src="@{/admin/menu/display(img=${item['image']})}" class="w-full h-full object-cover">
+            </div>
+        </td>
+        
+        <td class="py-6">
+            <span class="font-bold text-slate-700 text-sm" th:text="${item['name']}">Item Name</span>
+        </td>
+        
+        <td class="py-6">
+            <span class="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-600 font-black text-[9px] uppercase tracking-wider"
+                  th:text="${item['category_name']}">Category</span>
+        </td>
+        
+        <td class="py-6 text-center">
+            <span class="font-black text-emerald-600 text-sm" th:text="${item['price']}">0</span>
+            <span class="text-[9px] text-emerald-400 ml-0.5">MMK</span>
+        </td>
+
+        <td class="py-6 text-right">
+            <div class="flex justify-end gap-2">
+                
+                <div class="relative group">
+                    <button type="button" class="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all">
+                        <i class="fas fa-history"></i>
+                    </button>
+                    
+                    <div class="absolute bottom-full mb-3 right-0 w-80 bg-white border border-slate-200 shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-[2rem] p-6 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 pointer-events-none text-left">
+    
+    <div class="flex items-center justify-between mb-4 border-b border-slate-50 pb-3">
+        <h4 class="text-[11px] font-black uppercase text-slate-400 tracking-[0.2em]">Audit Trail</h4>
+        <i class="fas fa-shield-alt text-slate-300 text-xs"></i>
+    </div>
+    
+ <div class="space-y-6">
+    <div class="flex items-start gap-4">
+        <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm shrink-0 shadow-sm border border-emerald-100">
+            <i class="fas fa-plus"></i>
+        </div>
+        <div>
+            <p class="text-[10px] font-black uppercase text-emerald-500 tracking-wider mb-1">Initial added by</p>
+            <p class="text-[14px] font-bold text-slate-700 leading-none" th:text="${item['created_by_name']}">Admin Name</p>
+            <div class="flex items-center gap-1.5 mt-1.5 text-slate-400">
+                <i class="far fa-clock text-[10px]"></i>
+                <p class="text-[11px] font-medium" th:text="${item['created_at']}">2024-04-07 20:48</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="flex items-start gap-4 border-t border-slate-50 pt-5" th:if="${item['updated_at'] != null}">
+        <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-sm shrink-0 shadow-sm border border-blue-100">
+            <i class="far fa-edit"></i>
+        </div>
+        <div>
+            <p class="text-[10px] font-black uppercase text-blue-500 tracking-wider mb-1">Last edited by</p>
+            <p class="text-[14px] font-bold text-slate-700 leading-none" th:text="${item['updated_by_name']}">Editor Name</p>
+            <div class="flex items-center gap-1.5 mt-1.5 text-slate-400">
+                <i class="far fa-clock text-[10px]"></i>
+                <p class="text-[11px] font-medium" th:text="${item['updated_at']}">Update Time</p>
+            </div>
+        </div>
+    </div>
+</div>
+    
+    <div class="absolute top-full right-5 w-4 h-4 bg-white border-r border-b border-slate-200 rotate-45 -translate-y-2"></div>
+</div>
+                </div>
+
+                <button th:onclick="'openEditModal(' + ${item['menu_item_id']} + ')'"
+                        class="p-2 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-xl transition-all">
+                    <i class="far fa-edit"></i>
+                </button>
+
+                <button type="button" th:onclick="'confirmDelete(' + ${item['menu_item_id']} + ')'"
+                        class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all">
+                    <i class="far fa-trash-alt"></i>
+                </button>
+            </div>
+        </td>
+    </tr>
+</tbody>
                     </table>
                 </div>
             </div>
@@ -202,9 +298,9 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-1">
                         <label class="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Category</label>
-                        <select name="categoryId" id="modalCategory" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-emerald-500 text-sm font-bold">
-                            <option th:each="cat : ${categories}" th:value="${cat.categoryId}" th:text="${cat.categoryName}"></option>
-                        </select>
+                        <select name="categoryId" id="modalCategory" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-emerald-500 text-sm font-bold" required>
+    <option th:each="cat : ${categories}" th:value="${cat.categoryId}" th:text="${cat.categoryName}"></option>
+</select>
                     </div>
                     <div class="space-y-1">
                         <label class="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Price (MMK)</label>
@@ -213,10 +309,10 @@
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-1">
+                   <!--  <div class="space-y-1">
                         <label class="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Initial Stock</label>
                         <input type="number" name="stock_quantity" id="modalStock" class="w-full p-4 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-emerald-500 text-sm font-bold" required>
-                    </div>
+                    </div> -->
                     <div class="space-y-1">
                         <label class="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Image File</label>
                         <input type="file" name="file" class="w-full text-[10px] p-2 bg-slate-50 rounded-xl file:bg-emerald-500 file:text-white file:border-0 file:rounded-lg file:px-3 file:py-1">
@@ -234,64 +330,109 @@
     <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script>
-        $(document).ready(function() {
-            const table = $('#menuTable').DataTable({
-                "pageLength": 5, "ordering": false, "lengthChange": false,
-                "language": {
-                    "paginate": { "next": '<i class="fas fa-chevron-right"></i>', "previous": '<i class="fas fa-chevron-left"></i>' }
+    $(document).ready(function() {
+        // --- ၁။ URL Cleaner ---
+        if (window.location.search.indexOf('success') > -1 || window.location.search.indexOf('error') > -1) {
+            const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.replaceState({path: cleanUrl}, '', cleanUrl);
+        }
+
+        // --- ၂။ Modern Toast Auto-Hide ---
+        setTimeout(function() {
+            const $toast = $('#successToast, #errorToast');
+            if ($toast.length > 0) {
+                $toast.addClass('toast-animate-out'); 
+                setTimeout(() => $toast.remove(), 500);
+            }
+        }, 3000);
+
+        // --- ၃။ DataTables Initialization ---
+        const table = $('#menuTable').DataTable({
+            "pageLength": 5, 
+            "ordering": false, 
+            "lengthChange": false,
+            "dom": 'rtip', // hide default search box
+            "language": {
+                "paginate": { 
+                    "next": '<i class="fas fa-chevron-right"></i>', 
+                    "previous": '<i class="fas fa-chevron-left"></i>' 
                 }
-            });
-
-            // Row numbering
-            table.on('draw.dt', function () {
-                let info = table.page.info();
-                table.column(0, { page: 'current' }).nodes().each(function (cell, i) {
-                    cell.innerHTML = i + 1 + info.start;
-                });
-            });
-            table.draw();
-
-            $('#customSearch').on('keyup', function() { table.search(this.value).draw(); });
-
-            $('.category-filter-btn').on('click', function() {
-                $('.category-filter-btn').removeClass('active');
-                $(this).addClass('active');
-                table.column(3).search($(this).attr('data-category')).draw();
-            });
-
-            $('#sidebarToggle').on('click', function() { $('#dashboardWrapper').toggleClass('sidebar-hidden'); });
+            },
+            // Column Definitions for Index
+            "columnDefs": [ {
+                "searchable": false,
+                "orderable": false,
+                "targets": 0
+            } ]
         });
 
-        function openAddModal() {
-            $('#menuForm')[0].reset();
-            $('#modalId').val('');
-            $('#modalTitle').text("Add New Item");
+        // Dynamic Index Numbering (စာမျက်နှာကျော်ရင်လည်း နံပါတ်စဉ် ဆက်သွားအောင်)
+        table.on('draw.dt', function () {
+            let info = table.page.info();
+            table.column(0, { page: 'current' }).nodes().each(function (cell, i) {
+                cell.innerHTML = `<span class="font-extrabold text-slate-800 text-xs">${i + 1 + info.start}</span>`;
+            });
+        });
+        table.draw();
+
+        // Custom Search Box
+        $('#customSearch').on('keyup', function() { 
+            table.search(this.value).draw(); 
+        });
+
+        // Category Filter Logic (Exact Match ဖြစ်အောင် ပြင်ထားပါတယ်)
+        $('.category-filter-btn').on('click', function() {
+            $('.category-filter-btn').removeClass('active');
+            $(this).addClass('active');
+            
+            const category = $(this).attr('data-category');
+            // search pattern: ^...$ (စာလုံးအတိအကျတူမှပြရန်)
+            table.column(3).search(category ? '^' + category + '$' : '', true, false).draw();
+        });
+
+        // Sidebar Toggle
+        $('#sidebarToggle').on('click', function() { 
+            $('#dashboardWrapper').toggleClass('sidebar-hidden'); 
+        });
+    });
+
+    // --- Modal Functions ---
+    function openAddModal() {
+        $('#menuForm')[0].reset();
+        $('#modalId').val('');
+        $('#modalCurrentImage').val('');
+        $('#modalTitle').text("Add New Item");
+        $('#menuForm').attr('action', '/admin/menu/save');
+        $('#menuModal').removeClass('hidden');
+    }
+
+    async function openEditModal(id) {
+        $('#modalTitle').text("Edit Menu Item");
+        $('#menuForm').attr('action', '/admin/menu/update');
+        try {
+            const response = await fetch('/admin/menu/edit-data/' + id);
+            if (!response.ok) throw new Error('Network response was not ok');
+            const data = await response.json();
+            
+            $('#modalId').val(data.menu_item_id);
+            $('#modalName').val(data.name);
+            $('#modalCategory').val(data.category_id);
+            $('#modalPrice').val(data.price);
+            $('#modalCurrentImage').val(data.image || "");
             $('#menuModal').removeClass('hidden');
+        } catch (err) { 
+            console.error("Fetch Error:", err);
+            alert("Could not load item data.");
         }
+    }
 
-        async function openEditModal(id) {
-            $('#modalTitle').text("Edit Menu Item");
-            try {
-                const response = await fetch('/admin/menu/edit-data/' + id);
-                const data = await response.json();
-                $('#modalId').val(data.menu_item_id);
-                $('#modalName').val(data.name);
-                $('#modalCategory').val(data.category_id);
-                $('#modalPrice').val(data.price);
-                $('#modalStock').val(data.stock_quantity);
-                $('#modalCurrentImage').val(data.image || "");
-                $('#menuModal').removeClass('hidden');
-            } catch (err) { console.error(err); }
+    function closeModal() { $('#menuModal').addClass('hidden'); }
+
+    function confirmDelete(id) {
+        if (confirm('Are you sure you want to delete this item?')) {
+            window.location.href = '/admin/menu/delete/' + id;
         }
-
-        function closeModal() { $('#menuModal').addClass('hidden'); }
-
-        // NEW: Handles deletion without URL exposure
-        function confirmDelete(id) {
-            if (confirm('Confirm deletion?')) {
-                window.location.href = '/admin/menu/delete/' + id;
-            }
-        }
+    }
     </script>
 </body>
 </html>
