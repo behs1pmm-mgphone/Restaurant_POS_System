@@ -56,6 +56,7 @@ public class RestaurantTableRepository {
                 t.setRestaurant_table_id(rs.getInt("restaurant_table_id"));
                 t.setTable_number(rs.getString("table_number"));
                 t.setStatus(rs.getString("status"));
+                t.setArea_id(rs.getInt("area_id"));
                 return t;
             }, id);
             return Optional.ofNullable(table);

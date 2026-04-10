@@ -65,24 +65,6 @@ public class WaiterController {
         return "waiter-dashboard";
     }
 
-    @GetMapping("/waiter/areas")
-    public String showAreas(HttpSession session, Model model) {
-        UserBean loginUser = (UserBean) session.getAttribute("loginUser");
-        if(loginUser == null || loginUser.getRoleId() != 2) return "redirect:/login";
-
-        List<Map<String, Object>> allAreas = areaService.getAllAreas().stream()
-            .map(area -> {
-                Map<String, Object> map = new HashMap<>();
-                map.put("areaName", area.getAreaName());
-                map.put("maskedId", encodeId(area.getAreaId()));
-                map.put("status", area.getStatus());
-                return map;
-            }).collect(Collectors.toList());
-
-        model.addAttribute("areas", allAreas);
-        return "waiter-areas";
-    }
-
     @GetMapping("/waiter/areas/{id}/tables")
     public String showTablesByArea(@PathVariable("id") String encodedAreaId, HttpSession session, Model model) {
         UserBean loginUser = (UserBean) session.getAttribute("loginUser");
@@ -126,37 +108,30 @@ public class WaiterController {
             HttpSession session,
             Model model) {
 
+        // 1. Validate User
         UserBean loginUser = (UserBean) session.getAttribute("loginUser");
         if(loginUser == null || loginUser.getRoleId() != 2) return "redirect:/login";
 
-        // Pagination Logic: Fixed at 8 items per page
+        // 2. Pagination Fix: Ensure page is never less than 1
+        int currentPage = Math.max(1, page);
         int pageSize = 8;
-        List<WaiterView> items = waiterViewService.getPaginatedItems(page, pageSize, category, search);
+
+        // 3. Fetch Data
+        List<WaiterView> items = waiterViewService.getPaginatedItems(currentPage, pageSize, category, search);
         int totalItems = waiterViewService.getTotalItemCount(category, search);
         int totalPages = (int) Math.ceil((double) totalItems / pageSize);
 
-        // Safer Table Lookup
-        Integer tableId = decodeId(encodedTableId);
-        String tableNo = "??";
-        if (tableId != null) {
-            tableNo = restaurantTableRepository.findById(tableId)
-                        .map(t -> t.getTable_number())
-                        .orElse("??");
-        }
-
-        // UI Data binding (Original keys preserved)
+        // 4. Send UI context
         model.addAttribute("items", items);
-        model.addAttribute("tableNo", tableNo);
         model.addAttribute("maskedTableId", encodedTableId);
-        model.addAttribute("currentPage", page);
+        model.addAttribute("currentPage", currentPage);
         model.addAttribute("totalPages", totalPages);
         model.addAttribute("currentCat", category);
         model.addAttribute("searchQuery", search);
-        model.addAttribute("totalItems", totalItems);
 
-        // If AJAX request, return ONLY the fragment to avoid full page reload
+        // 5. AJAX Fragment return
         if (isAjax) {
-            return "waiter_view :: menuSection";
+            return "waiter_view :: menuSection"; // Ensure this matches th:fragment="menuSection" in HTML
         }
 
         return "waiter_view";
@@ -171,5 +146,34 @@ public class WaiterController {
     public String voidOrder(@RequestParam("orderId") String orderId) {
         waiterViewService.voidOrder(Integer.parseInt(orderId));
         return "success";
+    }
+
+    @Autowired
+    private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
+
+    @GetMapping("/waiter/tables/{id}/open")
+    public String openOrder(@PathVariable("id") String encodedTableId, HttpSession session) {
+        // 1. Security Check
+        UserBean loginUser = (UserBean) session.getAttribute("loginUser");
+        if(loginUser == null || loginUser.getRoleId() != 2) return "redirect:/login";
+
+        Integer tableId = decodeId(encodedTableId);
+
+        if (tableId != null) {
+            // 2. Update Database via JdbcTemplate
+            restaurantTableRepository.updateTableStatus(tableId, "Occupied");
+
+            // 3. BROADCAST via WebSocket
+            // This sends a message to everyone subscribed to /topic/table-updates
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("id", tableId);
+            payload.put("status", "Occupied");
+            payload.put("action", "UPDATE_STATUS");
+
+            messagingTemplate.convertAndSend("/topic/table-updates", (Object) payload);
+        }
+
+        // 4. Redirect to menu
+        return "redirect:/waiter/tables/" + encodedTableId + "/menu";
     }
 }

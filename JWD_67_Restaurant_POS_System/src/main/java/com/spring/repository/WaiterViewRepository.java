@@ -90,4 +90,9 @@ public class WaiterViewRepository {
         String sql = "UPDATE menu_item SET status = ? WHERE menu_item_id = ?";
         jdbcTemplate.update(sql, status, id);
     }
+
+    public void updateTableStatus(int tableId, String status) {
+        String sql = "UPDATE restaurant_tables SET status = ? WHERE table_id = ?";
+        jdbcTemplate.update(sql, status, tableId);
+    }
 }

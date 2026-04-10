@@ -1,296 +1,571 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emerald POS - Waiter Interface</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emerald POS - Waiter Interface</title>
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet"
+	href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link
+	href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+	rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script
+	src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+<script
+	src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
 
-    <style>
-        :root {
-            --primary-green: #27ae60;
-            --sidebar-gradient: linear-gradient(180deg, #1E1B4B 0%, #312E81 100%);
-        }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #F8FAFC; color: #333; }
+<style>
+:root {
+	--primary-green: #27ae60;
+	--sidebar-gradient: linear-gradient(180deg, #1E1B4B 0%, #312E81 100%);
+}
 
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .sidebar-gradient { background: var(--sidebar-gradient); }
-        .waiter-gradient { background: linear-gradient(135deg, #4338CA 0%, #6366F1 100%); }
+body {
+	font-family: 'Plus Jakarta Sans', sans-serif;
+	background-color: #F8FAFC;
+	color: #333;
+}
 
-        /* Sidebar Logic */
-        aside { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-        .sidebar-hidden aside { margin-left: -18rem; }
+.no-scrollbar::-webkit-scrollbar {
+	display: none;
+}
 
-        /* Original Menu Styles */
-        .cat-btn { border-radius: 20px; border: 1px solid #ddd; padding: 8px 20px; background: #fff; cursor: pointer; transition: 0.3s; font-size: 0.85rem; font-weight: 600; }
-        .cat-btn.active { background: var(--primary-green); color: white; border-color: var(--primary-green); }
-        .menu-card { border: none; border-radius: 24px; overflow: hidden; background: #fff; transition: all 0.3s ease; }
-        .menu-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        .item-img { height: 140px; object-fit: cover; width: 100%; background: #f1f5f9; }
+.sidebar-gradient {
+	background: var(--sidebar-gradient);
+}
 
-        /* Cart & Sidebar UI */
-        .cart-container { height: calc(100vh - 120px); border-radius: 24px; background: #fff; display: flex; flex-direction: column; }
-        .qty-pill { background: #f0fdf4; border-radius: 30px; padding: 4px 10px; display: flex; align-items: center; gap: 12px; }
-        .btn-circle { width: 26px; height: 26px; border-radius: 50%; border: none; background: white; color: var(--primary-green); display: flex; align-items: center; justify-content: center; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .table-badge { background: #1e1b4b; color: white; padding: 6px 14px; border-radius: 12px; font-size: 0.75rem; font-weight: 800; }
+.waiter-gradient {
+	background: linear-gradient(135deg, #4338CA 0%, #6366F1 100%);
+}
 
-        /* Swal Customization to match Premium look */
-        .swal2-confirm-btn { background-color: #27ae60 !important; color: white !important; padding: 12px 30px !important; border-radius: 14px !important; font-weight: 700; margin: 5px; }
-        .swal2-cancel-btn { background-color: #64748b !important; color: white !important; padding: 12px 30px !important; border-radius: 14px !important; font-weight: 700; margin: 5px; }
-    </style>
+aside {
+	transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-hidden aside {
+	margin-left: -18rem;
+}
+
+.cat-btn {
+	border-radius: 20px;
+	border: 1px solid #ddd;
+	padding: 8px 20px;
+	background: #fff;
+	cursor: pointer;
+	transition: 0.3s;
+	font-size: 0.85rem;
+	font-weight: 600;
+}
+
+.cat-btn.active {
+	background: var(--primary-green);
+	color: white;
+	border-color: var(--primary-green);
+}
+
+.menu-card {
+	border: none;
+	border-radius: 24px;
+	overflow: hidden;
+	background: #fff;
+	transition: all 0.3s ease;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
+.menu-card:hover {
+	transform: translateY(-5px);
+	box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+}
+
+.item-img {
+	height: 140px;
+	object-fit: cover;
+	width: 100%;
+	background: #f1f5f9;
+}
+
+.cart-container {
+	height: calc(100vh - 120px);
+	border-radius: 24px;
+	background: #fff;
+	display: flex;
+	flex-direction: column;
+}
+
+.qty-pill {
+	background: #f0fdf4;
+	border-radius: 30px;
+	padding: 4px 10px;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.btn-circle {
+	width: 26px;
+	height: 26px;
+	border-radius: 50%;
+	border: none;
+	background: white;
+	color: var(--primary-green);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 12px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.table-badge {
+	background: #1e1b4b;
+	color: white;
+	padding: 6px 14px;
+	border-radius: 12px;
+	font-size: 0.75rem;
+	font-weight: 800;
+}
+
+.swal2-confirm-btn {
+	background-color: #27ae60 !important;
+	color: white !important;
+	padding: 12px 30px !important;
+	border-radius: 14px !important;
+	font-weight: 700;
+	margin: 5px;
+	cursor: pointer;
+}
+
+.swal2-cancel-btn {
+	background-color: #64748b !important;
+	color: white !important;
+	padding: 12px 30px !important;
+	border-radius: 14px !important;
+	font-weight: 700;
+	margin: 5px;
+	cursor: pointer;
+}
+</style>
 </head>
 <body class="bg-[#F8FAFC]">
 
-    <div id="mainWrapper" class="flex h-screen overflow-hidden">
+	<div id="mainWrapper" class="flex h-screen overflow-hidden">
 
-        <aside class="w-72 sidebar-gradient text-white flex flex-col shadow-2xl shrink-0">
-            <div class="p-10 flex flex-col items-center border-b border-white/10">
-                <div class="w-20 h-20 rounded-[2rem] bg-indigo-500/20 backdrop-blur-md border border-white/20 flex items-center justify-center text-3xl font-black mb-4">
-                    <span class="text-indigo-300" th:text="${session.loginUser != null ? session.loginUser.userName.substring(0,1) : 'W'}">W</span>
-                </div>
-                <h3 class="font-bold text-lg" th:text="${session.loginUser != null ? session.loginUser.userName : 'Waiter Name'}">Waiter Name</h3>
-                <div class="px-3 py-1 bg-indigo-500/20 rounded-full mt-2 border border-indigo-400/30">
-                    <span class="text-[9px] uppercase tracking-widest text-indigo-300 font-black">Staff / Waiter</span>
-                </div>
-            </div>
+		<aside
+			class="w-72 sidebar-gradient text-white flex flex-col shadow-2xl shrink-0">
+			<div class="p-10 flex flex-col items-center border-b border-white/10">
+				<div
+					class="w-20 h-20 rounded-[2rem] bg-indigo-500/20 backdrop-blur-md border border-white/20 flex items-center justify-center text-3xl font-black mb-4">
+					<span class="text-indigo-300"
+						th:text="${session.loginUser != null ? session.loginUser.userName.substring(0,1) : 'W'}">W</span>
+				</div>
+				<h3 class="font-bold text-lg"
+					th:text="${session.loginUser != null ? session.loginUser.userName : 'Waiter Name'}">Waiter
+					Name</h3>
+				<div
+					class="px-3 py-1 bg-indigo-500/20 rounded-full mt-2 border border-indigo-400/30">
+					<span
+						class="text-[9px] uppercase tracking-widest text-indigo-300 font-black">Staff
+						/ Waiter</span>
+				</div>
+			</div>
 
-            <nav class="flex-1 px-6 py-8 space-y-2 overflow-y-auto no-scrollbar">
-                <a th:href="@{/waiter/dashboard}" class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group opacity-70">
-                    <i class="fas fa-th-large text-indigo-400"></i> Dashboard
-                </a>
-                <a href="#" class="flex items-center gap-4 p-4 bg-white/10 rounded-[1.5rem] font-bold border border-white/5">
-                    <i class="fas fa-utensils text-emerald-400"></i> New Order
-                </a>
-                <a th:href="@{/waiter/areas}" class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group opacity-70">
-                    <i class="fas fa-table text-indigo-400"></i> Tables
-                </a>
-            </nav>
+			<nav class="flex-1 px-6 py-8 space-y-2 overflow-y-auto no-scrollbar">
+				<a th:href="@{/waiter/dashboard}"
+					class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group opacity-70">
+					<i class="fas fa-th-large text-indigo-400"></i> Dashboard
+				</a> <a th:href="@{/waiter/areas}"
+					class="flex items-center gap-4 p-4 bg-white/10 rounded-[1.5rem] transition-all group">
+					<i class="fas fa-utensils text-white"></i> New Order
+				</a> <a th:href="@{/waiter/my-orders}"
+					class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group opacity-70">
+					<i class="fas fa-clipboard-list text-indigo-400"></i> My Orders
+				</a>
+			</nav>
 
-            <div class="p-8 border-t border-white/10">
-                <a th:href="@{/logout}" class="flex items-center justify-center gap-3 p-4 bg-red-500/10 hover:bg-red-500 rounded-2xl transition-all text-red-400 hover:text-white font-bold text-sm">
-                    <i class="fas fa-power-off"></i> Logout
-                </a>
-            </div>
-        </aside>
+			<div class="p-8 border-t border-white/10">
+				<a th:href="@{/logout}"
+					class="flex items-center justify-center gap-3 p-4 bg-red-500/10 hover:bg-red-500 rounded-2xl transition-all text-red-400 hover:text-white font-bold text-sm">
+					<i class="fas fa-power-off"></i> Logout
+				</a>
+			</div>
+		</aside>
 
-        <main class="flex-1 flex flex-col overflow-hidden">
+		<main class="flex-1 flex flex-col overflow-hidden">
 
-            <header class="h-20 bg-white/80 backdrop-blur-md px-8 flex justify-between items-center border-b border-slate-200 sticky top-0 z-20 shrink-0">
-                <div class="flex items-center gap-5">
-                    <button onclick="toggleSidebar()" class="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-500">
-                        <i class="fas fa-bars text-xl"></i>
-                    </button>
-                    <div class="w-1 h-8 waiter-gradient rounded-full"></div>
-                    <div>
-                        <h2 class="font-black text-slate-800 text-lg uppercase leading-none">Menu Selection</h2>
-                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Ordering for Table <span th:text="${tableNo}">01</span></p>
-                    </div>
-                </div>
+			<header
+				class="h-20 bg-white/80 backdrop-blur-md px-8 flex justify-between items-center border-b border-slate-200 sticky top-0 z-20 shrink-0">
+				<div class="flex items-center gap-5">
+					<button onclick="toggleSidebar()"
+						class="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-500">
+						<i class="fas fa-bars text-xl"></i>
+					</button>
+					<div class="w-1 h-8 waiter-gradient rounded-full"></div>
+					<div>
+						<h2
+							class="font-black text-slate-800 text-lg uppercase leading-none">Menu
+							Selection</h2>
+						<p
+							class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">
+							Ordering for Table <span th:text="${tableNo}">01</span>
+						</p>
+					</div>
+				</div>
 
-                <div class="relative w-72">
-                    <i class="fa fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                    <input type="text" id="searchInput" onkeyup="updateContent(1)"
-                           class="w-full pl-11 pr-4 py-2.5 bg-slate-100 border-none rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
-                           placeholder="Search dishes...">
-                </div>
-            </header>
+				<div class="flex items-center gap-4">
+					<div class="flex items-center gap-4">
+						<a th:href="@{/waiter/tables/{id}/back(id=${maskedTableId})}"
+							class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-2xl text-[11px] font-black text-slate-600 uppercase tracking-widest transition-all">
+							<i class="fa fa-arrow-left mr-2"></i> Table List
+						</a>
+					</div>
+					<div class="relative w-64">
+						<i
+							class="fa fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+						<input type="text" id="searchInput"
+							class="w-full pl-11 pr-4 py-2.5 bg-slate-100 border-none rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
+							placeholder="Search dishes...">
+					</div>
+				</div>
+			</header>
 
-            <div class="flex-1 overflow-y-auto p-8">
-                <div class="flex flex-col lg:flex-row gap-8">
+			<div class="flex-1 overflow-y-auto p-8">
+				<div class="flex flex-col lg:flex-row gap-8">
+					<div class="flex-1">
+						<div class="flex gap-3 mb-8 overflow-x-auto pb-2 no-scrollbar">
+							<button class="cat-btn"
+								th:classappend="${currentCat == 'ALL'} ? 'active'"
+								onclick="filterCategory('ALL', this)">All Menu</button>
+							<button class="cat-btn"
+								th:classappend="${currentCat == '1'} ? 'active'"
+								onclick="filterCategory('1', this)">Main Dish</button>
+							<button class="cat-btn"
+								th:classappend="${currentCat == '2'} ? 'active'"
+								onclick="filterCategory('2', this)">Soup</button>
+							<button class="cat-btn"
+								th:classappend="${currentCat == '3'} ? 'active'"
+								onclick="filterCategory('3', this)">Drinks</button>
+						</div>
 
-                    <div class="flex-1">
-                        <div class="flex gap-3 mb-8 overflow-x-auto pb-2 no-scrollbar">
-                            <button class="cat-btn" th:classappend="${currentCat == 'ALL'} ? 'active'" onclick="filterCategory('ALL', this)">All Menu</button>
-                            <button class="cat-btn" th:classappend="${currentCat == '1'} ? 'active'" onclick="filterCategory('1', this)">Main Dish</button>
-                            <button class="cat-btn" th:classappend="${currentCat == '2'} ? 'active'" onclick="filterCategory('2', this)">Soup</button>
-                            <button class="cat-btn" th:classappend="${currentCat == '3'} ? 'active'" onclick="filterCategory('3', this)">Drinks</button>
-                        </div>
+						<div id="menuSection" th:fragment="menuSection">
+							<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+								<div th:each="item : ${items}"
+									class="menu-card shadow-sm border border-slate-100">
+									<img th:src="@{'/' + ${item.image}}" class="item-img"
+										alt="Menu Item"
+										onerror="this.src='https://placehold.co/400x300?text=Food'">
+									<div class="p-5 flex-1 flex flex-col">
+										<h4 class="font-bold text-slate-800 mb-1 text-sm truncate"
+											th:text="${item.name}">Dish Name</h4>
+										<p class="text-emerald-600 font-black text-sm mb-4"
+											th:text="${#numbers.formatDecimal(item.price, 0, 'COMMA', 0, 'POINT')} + ' MMK'"></p>
+										<button
+											class="mt-auto w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all"
+											th:onclick="addToCart([[${item.id}]], [[${item.name}]], [[${item.price}]])">
+											<i class="fa fa-plus mr-2"></i> Add to order
+										</button>
+									</div>
+								</div>
+							</div>
 
-                        <div id="menuSection" th:fragment="menuSection">
-                            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-                                <div th:each="item : ${items}" class="menu-card shadow-sm border border-slate-100">
-                                   <img th:src="@{'/' + ${item.image}}" class="item-img" alt="Menu Item">
-                                    <div class="p-5">
-                                        <h4 class="font-bold text-slate-800 mb-1 text-sm truncate" th:text="${item.name}">Dish Name</h4>
-                                        <p class="text-emerald-600 font-black text-sm mb-4" th:text="${item.price} + ' MMK'"></p>
-                                        <button class="w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all"
-                                                th:onclick="addToCart([[${item.id}]], [[${item.name}]], [[${item.price}]])">
-                                            <i class="fa fa-plus mr-2"></i> Add to order
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+							<div class="mt-12 flex flex-col items-center gap-4"
+								th:if="${totalPages > 0}">
+								<div
+									class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+									Page <span th:text="${currentPage}">1</span> of <span
+										th:text="${totalPages}">1</span>
+								</div>
+								<div class="flex gap-2">
+									<button
+										class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed"
+										th:onclick="'updateContent(' + (${currentPage} - 1) + ')'"
+										th:disabled="${currentPage <= 1}">
+										<i class="fa fa-chevron-left"></i>
+									</button>
+									<button
+										class="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold"
+										th:text="${currentPage}">1</button>
+									<button
+										class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed"
+										th:onclick="'updateContent(' + (${currentPage} + 1) + ')'"
+										th:disabled="${currentPage >= totalPages}">
+										<i class="fa fa-chevron-right"></i>
+									</button>
+								</div>
+							</div>
+						</div>
+					</div>
 
-                            <div class="mt-12 flex flex-col items-center gap-4" th:if="${totalPages > 1}">
-                                <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    Page <span th:text="${currentPage}">1</span> of <span th:text="${totalPages}">10</span>
-                                </div>
-                                <div class="flex gap-2">
-                                    <button class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600"
-                                            th:onclick="'updateContent(' + ${currentPage - 1} + ')'" th:disabled="${currentPage == 1}">
-                                        <i class="fa fa-chevron-left"></i>
-                                    </button>
-                                    <button class="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold" th:text="${currentPage}">1</button>
-                                    <button class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600"
-                                            th:onclick="'updateContent(' + ${currentPage + 1} + ')'" th:disabled="${currentPage == totalPages}">
-                                        <i class="fa fa-chevron-right"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+					<div class="w-full lg:w-96 shrink-0">
+						<div
+							class="cart-container shadow-xl border border-slate-100 p-6 sticky top-4">
+							<div class="flex justify-between items-center mb-6">
+								<span
+									class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Live
+									Basket</span> <span class="table-badge">TABLE <span
+									id="displayTableNo" th:text="${tableNo}">01</span></span>
+							</div>
 
-                    <div class="w-full lg:w-96 shrink-0">
-                        <div class="cart-container shadow-xl border border-slate-100 p-6 sticky top-0">
-                            <div class="flex justify-between items-center mb-6">
-                                <span class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Live Basket</span>
-                                <span class="table-badge">TABLE <span id="displayTableNo" th:text="${tableNo}">01</span></span>
-                            </div>
+							<div class="flex-1 overflow-y-auto no-scrollbar" id="cartContent"></div>
 
-                            <div class="flex-1 overflow-y-auto no-scrollbar" id="cartContent">
-                                </div>
+							<div class="pt-6 border-t border-slate-100 mt-4">
+								<div class="flex justify-between items-end mb-6">
+									<span class="text-slate-400 text-sm font-medium">Total
+										Amount</span> <span class="text-2xl font-black text-slate-800"
+										id="cartTotal">0 MMK</span>
+								</div>
 
-                            <div class="pt-6 border-t border-slate-100 mt-4">
-                                <div class="flex justify-between items-end mb-6">
-                                    <span class="text-slate-400 text-sm font-medium">Total Amount</span>
-                                    <span class="text-2xl font-black text-slate-800" id="cartTotal">0 MMK</span>
-                                </div>
-                                <button onclick="processOrder()" class="w-full py-5 waiter-gradient text-white rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all">
-                                    Confirm Order
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div>
+								<button id="btnConfirmOrder" onclick="processOrder()"
+									class="w-full py-5 waiter-gradient text-white rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all">
+									Confirm Order</button>
 
-    <script th:inline="javascript">
-        let cart = [];
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
 
+			<form id="orderForm"
+				th:action="@{/waiter/tables/{id}/order(id=${maskedTableId})}"
+				method="POST" style="display: none;"></form>
 
-        function toggleSidebar() {
-            document.getElementById('mainWrapper').classList.toggle('sidebar-hidden');
-        }
+			<div id="ordersModal" class="hidden fixed inset-0 z-50">
+				<div class="absolute inset-0 bg-slate-900/50"
+					onclick="closeMyOrders()"></div>
+				<div
+					class="absolute right-0 top-0 h-full w-full sm:w-[28rem] bg-white shadow-2xl p-6 flex flex-col">
+					<div class="flex items-center justify-between mb-4">
+						<div>
+							<h3 class="text-lg font-black text-slate-800">My Orders</h3>
+							<p
+								class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Latest
+								30 orders</p>
+						</div>
+						<button
+							class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600"
+							onclick="closeMyOrders()">
+							<i class="fa fa-times"></i>
+						</button>
+					</div>
+					<div id="myOrdersList"
+						class="flex-1 overflow-y-auto no-scrollbar space-y-3"></div>
+				</div>
+			</div>
 
-     // လက်ရှိ updateContent function ကို ဒါလေးနဲ့ အစားထိုးလိုက်ပါ
-        function updateContent(page) {
-            const search = document.getElementById('searchInput').value;
-            const tableNo = document.getElementById('displayTableNo').innerText;
+		</main>
+	</div>
 
-            // Controller ရဲ့ Path @GetMapping("/waiter/tables/{id}/menu") နဲ့ ကိုက်အောင် ပြင်တာပါ
-            const maskedId = [[${maskedTableId}]];
-            const url = `/waiter/tables/${maskedId}/menu?page=${page}&category=${activeCat}&search=${search}&ajax=true`;
+	<script th:inline="javascript">
+    let cart = [];
+    let activeCat = /*[[${currentCat}]]*/ 'ALL';
+    const maskedTableId = /*[[${maskedTableId}]]*/ '';
+    const waiterId = /*[[${session.loginUser != null ? session.loginUser.userId : 0}]]*/ 0;
 
-            fetch(url)
-                .then(res => {
-                    if (!res.ok) throw new Error('Network response was not ok');
-                    return res.text();
-                })
-                .then(html => {
-                    // fragment refresh လုပ်တဲ့အခါ image path တွေ မပျောက်အောင်
-                    // menuSection ကို အတိအကျ replace လုပ်တာပါ
-                    document.getElementById('menuSection').innerHTML = html;
-                })
-                .catch(err => console.error('Error:', err));
-        }
+    function toggleSidebar() {
+        document.getElementById('mainWrapper').classList.toggle('sidebar-hidden');
+    }
 
-        function filterCategory(cat, btn) {
-            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            activeCat = cat;
-            updateContent(1);
-        }
-
-        function addToCart(id, name, price) {
-            let exist = cart.find(i => i.id === id);
-            if(exist) { exist.qty++; }
-            else { cart.push({id, name, price, qty: 1, note: ''}); }
-            updateCartUI();
-        }
-
-        function updateCartUI() {
-            const cont = document.getElementById('cartContent');
-            let total = 0;
-            if(!cart.length) {
-                cont.innerHTML = `<div class="h-full flex flex-col items-center justify-center text-slate-300 opacity-60"><i class="fa fa-shopping-basket text-4xl mb-4"></i><p class="text-xs font-bold uppercase tracking-widest">Basket Empty</p></div>`;
-                document.getElementById('cartTotal').innerText = "0 MMK";
-                return;
-            }
-            let html = '';
-            cart.forEach((i, idx) => {
-                total += (i.price * i.qty);
-                html += `
-                    <div class="mb-5 pb-5 border-b border-slate-50 last:border-0">
-                        <div class="flex justify-between items-start mb-3">
-                            <div class="pr-4">
-                                <h5 class="text-sm font-bold text-slate-800 leading-tight">${i.name}</h5>
-                                <p class="text-emerald-600 font-bold text-xs mt-1">${(i.price * i.qty).toLocaleString()} MMK</p>
-                            </div>
-                            <button onclick="removeItem(${idx})" class="text-slate-300 hover:text-red-500 transition-colors"><i class="fa fa-times-circle"></i></button>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <button onclick="toggleNote(${idx})" class="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Note</button>
-                            <div class="qty-pill">
-                                <button class="btn-circle" onclick="updateQty(${idx},-1)">-</button>
-                                <span class="text-xs font-black text-slate-700">${i.qty}</span>
-                                <button class="btn-circle" onclick="updateQty(${idx},1)">+</button>
-                            </div>
-                        </div>
-                        <input type="text" id="n-in-${idx}" class="hidden w-full mt-3 p-3 bg-slate-50 border-none rounded-xl text-xs"
-                               value="${i.note}" placeholder="Any special requests?" onblur="saveNote(${idx}, this.value)">
-                    </div>`;
-            });
-            cont.innerHTML = html;
-            document.getElementById('cartTotal').innerText = total.toLocaleString() + " MMK";
-        }
-
-        // Logic Helpers
-        function updateQty(idx, d) { cart[idx].qty += d; if(cart[idx].qty <= 0) cart.splice(idx, 1); updateCartUI(); }
-        function removeItem(idx) { cart.splice(idx, 1); updateCartUI(); }
-        function toggleNote(idx) {
-            const el = document.getElementById(`n-in-${idx}`);
-            el.classList.toggle('hidden');
-            if(!el.classList.contains('hidden')) el.focus();
-        }
-        function saveNote(idx, val) { cart[idx].note = val; updateCartUI(); }
-
-        function processOrder() {
-            if(!cart.length) return;
-            const tableNo = document.getElementById('displayTableNo').innerText;
-
-            let html = `<div class="text-left py-2">`;
-            cart.forEach(i => {
-                html += `<div class="flex justify-between text-sm mb-2 font-medium text-slate-600">
-                    <span>${i.name} x${i.qty}</span>
-                    <span>${(i.price * i.qty).toLocaleString()}</span>
-                </div>`;
-            });
-            html += `</div>`;
-
+    function checkURLParams() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('success') === 'true') {
             Swal.fire({
-                title: 'Confirm Order',
-                html: html,
-                showCancelButton: true,
-                confirmButtonText: 'Send to Kitchen',
-                customClass: { confirmButton: 'swal2-confirm-btn', cancelButton: 'swal2-cancel-btn' },
-                buttonsStyling: false
-            }).then(res => {
-                if(res.isConfirmed) {
-                    // Your logic to send to server here
-                    cart = [];
-                    updateCartUI();
-                    Swal.fire({ icon: 'success', title: 'Order Sent!', timer: 1500, showConfirmButton: false });
+                icon: 'success',
+                title: 'ORDER SENT',
+                text: 'Order successfully sent to kitchen.',
+                showConfirmButton: false,
+                timer: 2000,
+                timerProgressBar: true,
+                backdrop: `rgba(0,0,0,0.4)`, // ရိုးရိုး backdrop ပဲ သုံးထားပါတယ်
+                customClass: {
+                    popup: 'rounded-[2rem] p-8 shadow-xl',
+                    timerProgressBar: 'bg-emerald-500'
                 }
             });
-        }
 
-        document.addEventListener("DOMContentLoaded", updateCartUI);
-    </script>
+            // URL ထဲက success=true ကို ဖျောက်ရန်
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+
+    // ၂။ My Orders Modal ဖွင့်ခြင်း/ပိတ်ခြင်း
+    function openMyOrders() {
+        document.getElementById('ordersModal').classList.remove('hidden');
+        loadMyOrders();
+    }
+
+    function closeMyOrders() {
+        document.getElementById('ordersModal').classList.add('hidden');
+    }
+
+    async function loadMyOrders() {
+        const list = document.getElementById('myOrdersList');
+        list.innerHTML = `<div class="p-8 text-center"><i class="fa fa-spinner fa-spin text-slate-300 text-2xl mb-2"></i><p class="text-xs text-slate-400">Loading orders...</p></div>`;
+        try {
+            const res = await fetch('/waiter/my-orders');
+            const orders = await res.json();
+            if (!orders || !orders.length) {
+                list.innerHTML = `<div class="text-slate-400 text-sm font-semibold p-4 text-center">No orders yet.</div>`;
+                return;
+            }
+
+            list.innerHTML = orders.map(o => {
+                const id = o.order_id ?? o.orderId ?? '-';
+                const table = o.table_number ?? o.tableNumber ?? '-';
+                const status = o.status ?? '-';
+                const total = o.total_amount ?? o.totalAmount ?? 0;
+                return `
+                  <div class="p-4 rounded-2xl border border-slate-100 bg-white shadow-sm">
+                    <div class="flex items-center justify-between">
+                      <div class="font-black text-slate-800">#${id}</div>
+                      <div class="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}">
+                        ${status}
+                      </div>
+                    </div>
+                    <div class="mt-2 flex items-center justify-between text-sm">
+                      <div class="text-slate-600 font-bold">Table ${table}</div>
+                      <div class="text-emerald-600 font-black">${Number(total).toLocaleString()} MMK</div>
+                    </div>
+                  </div>
+                `;
+            }).join('');
+        } catch (e) {
+            list.innerHTML = `<div class="text-red-500 text-sm font-semibold p-4">Failed to load orders.</div>`;
+        }
+    }
+
+    // ၃။ Menu Update & Search Logic
+    function updateContent(page) {
+        const search = document.getElementById('searchInput').value;
+        const url = `/waiter/tables/${maskedTableId}/menu?page=${page}&category=${activeCat}&search=${search}&ajax=true`;
+        fetch(url).then(res => res.text()).then(html => {
+            document.getElementById('menuSection').innerHTML = html;
+        }).catch(err => console.error(err));
+    }
+
+    let searchTimeout;
+    document.getElementById('searchInput').addEventListener('keyup', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => updateContent(1), 300);
+    });
+
+    function filterCategory(cat, btn) {
+        document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeCat = cat;
+        updateContent(1);
+    }
+
+    // ၄။ Cart/Basket Logic
+    function addToCart(id, name, price) {
+        let exist = cart.find(i => i.id === id);
+        if(exist) { exist.qty++; }
+        else { cart.push({id, name, price, qty: 1, note: ''}); }
+        updateCartUI();
+    }
+
+    function updateCartUI() {
+        const cont = document.getElementById('cartContent');
+        let total = 0;
+        if(!cart.length) {
+            cont.innerHTML = `<div class="h-full flex flex-col items-center justify-center text-slate-300 opacity-60"><i class="fa fa-shopping-basket text-4xl mb-4"></i><p class="text-xs font-bold uppercase tracking-widest">Basket Empty</p></div>`;
+            document.getElementById('cartTotal').innerText = "0 MMK";
+            return;
+        }
+        let html = '';
+        cart.forEach((i, idx) => {
+            total += (i.price * i.qty);
+            html += `
+                <div class="mb-5 pb-5 border-b border-slate-50 last:border-0">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="pr-4">
+                            <h5 class="text-sm font-bold text-slate-800 leading-tight">${i.name}</h5>
+                            <p class="text-emerald-600 font-bold text-xs mt-1">${(i.price * i.qty).toLocaleString()} MMK</p>
+                        </div>
+                        <button onclick="removeItem(${idx})" class="text-slate-300 hover:text-red-500 transition-colors"><i class="fa fa-times-circle"></i></button>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <button onclick="toggleNote(${idx})" class="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Note</button>
+                        <div class="qty-pill">
+                            <button class="btn-circle" onclick="updateQty(${idx},-1)">-</button>
+                            <span class="text-xs font-black text-slate-700">${i.qty}</span>
+                            <button class="btn-circle" onclick="updateQty(${idx},1)">+</button>
+                        </div>
+                    </div>
+                    <input type="text" id="n-in-${idx}" class="${i.note ? '' : 'hidden'} w-full mt-3 p-3 bg-slate-50 border-none rounded-xl text-xs"
+                           value="${i.note}" placeholder="Any special requests?" onblur="saveNote(${idx}, this.value)">
+                </div>`;
+        });
+        cont.innerHTML = html;
+        document.getElementById('cartTotal').innerText = total.toLocaleString() + " MMK";
+    }
+
+    function updateQty(idx, d) { cart[idx].qty += d; if(cart[idx].qty <= 0) cart.splice(idx, 1); updateCartUI(); }
+    function removeItem(idx) { cart.splice(idx, 1); updateCartUI(); }
+    function toggleNote(idx) {
+        const el = document.getElementById(`n-in-${idx}`);
+        el.classList.toggle('hidden');
+        if(!el.classList.contains('hidden')) el.focus();
+    }
+    function saveNote(idx, val) { cart[idx].note = val; }
+
+    function processOrder() {
+        if(!cart.length) return;
+
+        let summaryHtml = `<div class="text-left py-2 max-h-60 overflow-y-auto no-scrollbar">`;
+        cart.forEach(i => {
+            summaryHtml += `
+                <div class="mb-3 border-b border-slate-50 pb-2">
+                    <div class="flex justify-between text-sm font-bold text-slate-700">
+                        <span>${i.name} x${i.qty}</span>
+                        <span>${(i.price * i.qty).toLocaleString()}</span>
+                    </div>
+                    ${i.note ? `<p class="text-[11px] text-blue-500 italic mt-1 font-medium"><i class="fa fa-sticky-note mr-1"></i>Note: ${i.note}</p>` : ''}
+                </div>`;
+        });
+        summaryHtml += `</div>`;
+
+        Swal.fire({
+            title: 'Send to Kitchen?',
+            html: summaryHtml,
+            showCancelButton: true,
+            confirmButtonText: 'Confirm Now',
+            cancelButtonText: 'Cancel',
+            customClass: { confirmButton: 'swal2-confirm-btn', cancelButton: 'swal2-cancel-btn' },
+            buttonsStyling: false
+        }).then(res => {
+            if(res.isConfirmed) {
+                // ... Form Submission Logic ...
+                const form = document.getElementById('orderForm');
+                form.innerHTML = '';
+                cart.forEach((item, index) => {
+                    appendInput(form, `items[${index}].menuItemId`, item.id);
+                    appendInput(form, `items[${index}].quantity`, item.qty);
+                    appendInput(form, `items[${index}].note`, item.note || "");
+                    appendInput(form, `items[${index}].unitPrice`, item.price);
+                    appendInput(form, `items[${index}].total`, item.price * item.qty);
+                });
+                form.submit();
+            }
+        });
+    }
+
+    function appendInput(form, name, value) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        form.appendChild(input);
+    }
+
+    // ၆။ Page စဖွင့်ချိန်မှာ လုပ်မယ့်အလုပ်များ
+    document.addEventListener("DOMContentLoaded", () => {
+        updateCartUI();
+        checkURLParams();
+        // Table locking method ကို ဖယ်ရှားလိုက်ပါပြီ
+    });
+</script>
 </body>
 </html>

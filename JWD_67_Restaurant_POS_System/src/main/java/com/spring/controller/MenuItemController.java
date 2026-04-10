@@ -52,7 +52,7 @@ public class MenuItemController {
             @RequestParam(name = "search", required = false) String search,
             // === ၁။ Page နဲ့ Size parameter များ လက်ခံရန် ထည့်သွင်းခြင်း ===
             @RequestParam(name = "page", defaultValue = "0") int page,
-            @RequestParam(name = "size", defaultValue = "10") int size, 
+            @RequestParam(name = "size", defaultValue = "10") int size,
             Model model, HttpSession session) {
 
         if (session.getAttribute("loginUser") == null) return "redirect:/login";
@@ -64,7 +64,7 @@ public class MenuItemController {
      // Controller ထဲမှာ size ကို အများကြီးပေးထားလိုက်ပါ
         List<Map<String, Object>> items = menuService.getPaginatedItems(categoryId, search, 1000, 0);
         model.addAttribute("items", items);
-        
+
         // === ၄။ UI မှာ စာမျက်နှာအရေအတွက် တွက်ချက်ပြသရန် လိုအပ်သည့် Data များ ပို့ပေးခြင်း ===
         long totalItems = menuService.getTotalCount(categoryId, search);
         int totalPages = (int) Math.ceil((double) totalItems / size);
@@ -74,7 +74,7 @@ public class MenuItemController {
         model.addAttribute("totalPages", totalPages);
         model.addAttribute("pageSize", size);
         model.addAttribute("categories", categoryService.getAllActiveCategories());
-        
+
         return "menu-list";
     }
 
@@ -111,27 +111,27 @@ public class MenuItemController {
         UserBean user = (UserBean) session.getAttribute("loginUser");
 
         if (user != null) {
-            String imageName = "default.png"; 
+            String imageName = "default.png";
 
             try {
                 // ၁။ ပုံ သိမ်းဆည်းခြင်း Logic
                 if (file != null && !file.isEmpty()) {
                     Path uploadPath = Paths.get(UPLOAD_DIR);
                     if (!Files.exists(uploadPath)) Files.createDirectories(uploadPath);
-                    
+
                     imageName = file.getOriginalFilename();
                     Path copyLocation = uploadPath.resolve(imageName);
                     Files.copy(file.getInputStream(), copyLocation, StandardCopyOption.REPLACE_EXISTING);
                 }
-                
+
                 // ၂။ Service ကို ခေါ်ပြီး Database သို့ သိမ်းခြင်း
                 // ဒီနေရာမှာ နာမည်တူနေရင် Service ကနေ RuntimeException ပစ်ပါလိမ့်မယ်
                 menuService.createItem(payload, imageName, user.getUserId());
-                
+
                 // အောင်မြင်ရင် success message နဲ့ ပြန်သွားမယ်
                 return "redirect:/admin/menu?success=Item added successfully";
 
-            } catch (IOException e) { 
+            } catch (IOException e) {
                 e.printStackTrace();
                 return "redirect:/admin/menu?error=File upload failed";
             } catch (RuntimeException e) {
@@ -140,7 +140,7 @@ public class MenuItemController {
                 return "redirect:/admin/menu?error=" + e.getMessage();
             }
         }
-        
+
         return "redirect:/login";
     }
 
