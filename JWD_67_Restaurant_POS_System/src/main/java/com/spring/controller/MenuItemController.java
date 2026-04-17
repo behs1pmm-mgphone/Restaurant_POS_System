@@ -180,4 +180,27 @@ public class MenuItemController {
             return null;
         }
     }
+    
+ // --- STATUS UPDATE METHOD (AJAX) ---
+    @PostMapping("/update-status")
+    @ResponseBody
+    public String updateStatus(@RequestParam("id") int id, 
+                               @RequestParam("status") String status, 
+                               HttpSession session) {
+        
+        UserBean user = (UserBean) session.getAttribute("loginUser");
+        
+        if (user != null) {
+            try {
+                // Service ထဲမှာ status တစ်ခုတည်းကို update လုပ်မယ့် method ကို ခေါ်မယ်
+                // user.getUserId() ကိုပါ ပို့ပေးတာက ဘယ်သူ update လုပ်သွားလဲ သိအောင် Audit trail အတွက်ပါ
+                menuService.updateItemStatus(id, status, user.getUserId());
+                return "success";
+            } catch (Exception e) {
+                e.printStackTrace();
+                return "error";
+            }
+        }
+        return "unauthorized";
+    }
 }

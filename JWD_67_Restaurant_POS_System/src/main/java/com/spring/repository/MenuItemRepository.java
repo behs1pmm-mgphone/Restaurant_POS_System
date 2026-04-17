@@ -114,4 +114,14 @@ public class MenuItemRepository {
         String sql = "SELECT COUNT(*) FROM menu_item WHERE is_deleted = 0";
         return jdbcTemplate.queryForObject(sql, Long.class);
     }
+    
+ // --- STATUS တစ်ခုတည်းကိုသာ Update လုပ်ရန် (Toggle Switch အတွက်) ---
+    public int updateStatus(int id, String status, int adminId) {
+        String sql = "UPDATE menu_item SET status = ?, updated_at = NOW(), updated_by = ? WHERE menu_item_id = ?";
+        
+        // 1. status ('Available' or 'Sold Out')
+        // 2. adminId (ဘယ်သူပြင်သွားလဲ သိအောင်)
+        // 3. id (ဘယ် item ကို ပြင်မှာလဲ)
+        return jdbcTemplate.update(sql, status, adminId, id);
+    }
 }

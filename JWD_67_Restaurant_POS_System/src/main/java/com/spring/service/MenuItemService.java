@@ -66,4 +66,10 @@ public class MenuItemService {
     }
 
     public void removeRequestedItem(int id, int adminId) { menuRepo.softDelete(id, adminId); }
+    
+ // --- UPDATE ONLY STATUS (For Toggle Switch) ---
+    public void updateItemStatus(int id, String status, int adminId) {
+        // Repository ထဲက updateStatus method ကို လှမ်းခေါ်မယ်
+        menuRepo.updateStatus(id, status, adminId);
+    }
 }

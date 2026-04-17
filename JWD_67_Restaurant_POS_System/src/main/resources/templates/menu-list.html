@@ -74,6 +74,48 @@
     transform: translateX(120%);
     opacity: 0;
 }
+
+
+/* //Status// */
+/* Status Toggle Switch Design */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+}
+
+.switch input { opacity: 0; width: 0; height: 0; }
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #cbd5e1; /* Gray for Off */
+  transition: .4s;
+  border-radius: 20px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px; width: 14px;
+  left: 3px; bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider { background-color: #10B981; } /* Emerald for On */
+input:checked + .slider:before { transform: translateX(20px); }
+
+/* Sold Out Row Opacity */
+.sold-out-row {
+    opacity: 0.5;
+    background-color: #f1f5f9 !important;
+    transition: all 0.4s ease;
+}
+
 </style>
 </head>
 <body class="bg-[#F8FAFC] text-slate-800">
@@ -191,6 +233,7 @@
                                 <th class="pb-6">No.</th>
                                 <th class="pb-6">Preview</th>
                                 <th class="pb-6">Item Name</th>
+                                <th class="pb-6 text-center">Status</th>
                                 <th class="pb-6">Category</th>
                                 <th class="pb-6 text-center">Price</th>
                                <!--  <th class="pb-6 text-center">Stock</th> -->
@@ -198,7 +241,10 @@
                             </tr>
                         </thead>
                        <tbody class="divide-y divide-slate-50">
-    <tr th:each="item : ${items}" class="hover:bg-slate-50/50 transition-all">
+   <tr th:each="item : ${items}" 
+        th:classappend="${item['status'] == 'Sold Out' ? 'sold-out-row' : ''}" 
+        class="hover:bg-slate-50/50 transition-all">
+        
         <td class="py-6 font-extrabold text-slate-800 text-xs"></td>
         
         <td class="py-6">
@@ -210,6 +256,24 @@
         <td class="py-6">
             <span class="font-bold text-slate-700 text-sm" th:text="${item['name']}">Item Name</span>
         </td>
+        
+        
+        <!-- Status -->
+        <td class="py-6 text-center pr-10">
+    <div class="flex flex-col items-center gap-2">
+        <label class="switch">
+            <input type="checkbox" 
+                   th:checked="${item['status'] == 'Available'}" 
+                   th:onchange="'toggleStatus(' + ${item['menu_item_id']} + ', this)'">
+            <span class="slider"></span>
+        </label>
+        <span class="status-label text-[9px] font-black uppercase tracking-wider"
+              th:classappend="${item['status'] == 'Available' ? 'text-emerald-500' : 'text-slate-400'}"
+              th:text="${item['status']}">
+            Available
+        </span>
+    </div>
+</td>
         
         <td class="py-6">
             <span class="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-600 font-black text-[9px] uppercase tracking-wider"
@@ -295,6 +359,7 @@
             <form id="menuForm" th:action="@{/admin/menu/save}" method="post" enctype="multipart/form-data" class="space-y-4">
                 <input type="hidden" name="menu_item_id" id="modalId">
                 <input type="hidden" name="current_image" id="modalCurrentImage">
+                <input type="hidden" name="status" id="modalStatus">
 
                 <div class="space-y-1">
                     <label class="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Item Name</label>
@@ -365,11 +430,11 @@
                 }
             },
             // Column Definitions for Index
-            "columnDefs": [ {
-                "searchable": false,
-                "orderable": false,
-                "targets": 0
-            } ]
+           "columnDefs": [ {
+    "searchable": false,
+    "orderable": false,
+    "targets": [0, 1, 3, 6] // No, Preview, Status နဲ့ Actions တွေကို search/sort မလုပ်ခိုင်းတာပါ
+} ]
         });
 
         // Dynamic Index Numbering (စာမျက်နှာကျော်ရင်လည်း နံပါတ်စဉ် ဆက်သွားအောင်)
@@ -393,7 +458,7 @@
             
             const category = $(this).attr('data-category');
             // search pattern: ^...$ (စာလုံးအတိအကျတူမှပြရန်)
-            table.column(3).search(category ? '^' + category + '$' : '', true, false).draw();
+            table.column(4).search(category ? '^' + category + '$' : '', true, false).draw();
         });
 
         // Sidebar Toggle
@@ -423,8 +488,9 @@
             $('#modalId').val(data.menu_item_id);
             $('#modalName').val(data.name);
             $('#modalCategory').val(data.category_id);
-            $('#modalPrice').val(data.price);
+            $('#modalPrice').val(Number(data.price)).prop('readonly', false).prop('disabled', false);
             $('#modalCurrentImage').val(data.image || "");
+            $('#modalStatus').val(data.status);
             $('#menuModal').removeClass('hidden');
         } catch (err) { 
             console.error("Fetch Error:", err);
@@ -439,6 +505,44 @@
             window.location.href = '/admin/menu/delete/' + id;
         }
     }
+    
+    /* status */
+   async function toggleStatus(id, checkbox) {
+    const isChecked = checkbox.checked;
+    const newStatus = isChecked ? 'Available' : 'Sold Out';
+    
+    // UI feedback ပေးဖို့ row နဲ့ label ကို ယူမယ်
+    const row = checkbox.closest('tr');
+    const label = row.querySelector('.status-label');
+
+    try {
+        // Controller ဆီကို parameters တွေ ပို့မယ်
+        const response = await fetch(`/admin/menu/update-status?id=${id}&status=${newStatus}`, {
+            method: 'POST'
+        });
+
+        if (response.ok) {
+            // အောင်မြင်ရင် Label စာသားနဲ့ အရောင်ကို ပြောင်းမယ်
+            label.innerText = newStatus;
+            if (isChecked) {
+                label.classList.remove('text-slate-400');
+                label.classList.add('text-emerald-500');
+                row.classList.remove('sold-out-row');
+            } else {
+                label.classList.remove('text-emerald-500');
+                label.classList.add('text-slate-400');
+                row.classList.add('sold-out-row');
+            }
+        } else {
+            alert("Failed to update status");
+            checkbox.checked = !isChecked; // Error ဖြစ်ရင် switch ကို မူလအတိုင်း ပြန်ပြောင်းမယ်
+        }
+    } catch (err) {
+        console.error("Error:", err);
+        checkbox.checked = !isChecked;
+    }
+}
+    
     </script>
 </body>
 </html>
