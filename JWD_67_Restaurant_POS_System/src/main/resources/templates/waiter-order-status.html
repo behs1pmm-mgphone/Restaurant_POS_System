@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Item Status | Premium POS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; overflow-x: hidden; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .sidebar-gradient { background: linear-gradient(180deg, #1E1B4B 0%, #312E81 100%); }
+        .waiter-gradient { background: linear-gradient(135deg, #4338CA 0%, #6366F1 100%); }
+        aside { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 50; }
+        @media (max-width: 1280px) {
+            aside { position: fixed; height: 100vh; left: -18rem; }
+            .sidebar-open aside { left: 0; }
+            .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 40; }
+            .sidebar-open .sidebar-overlay { display: block; }
+        }
+        .sidebar-hidden aside { margin-left: -18rem; }
+    </style>
+</head>
+<body class="bg-[#F8FAFC] text-slate-800">
+    <div id="overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <div id="mainWrapper" class="flex h-screen overflow-hidden">
+        <aside class="w-72 sidebar-gradient text-white flex flex-col shadow-2xl shrink-0">
+            <div class="p-10 flex flex-col items-center border-b border-white/10">
+                <div class="w-20 h-20 rounded-[2rem] bg-indigo-500/20 backdrop-blur-md border border-white/20 flex items-center justify-center text-3xl font-black mb-4">
+                    <span class="text-indigo-300" th:text="${session.loginUser != null ? session.loginUser.userName.substring(0,1) : 'W'}">W</span>
+                </div>
+                <h3 class="font-bold text-lg" th:text="${session.loginUser != null ? session.loginUser.userName : 'Waiter Name'}">Waiter Name</h3>
+                <div class="px-3 py-1 bg-indigo-500/20 rounded-full mt-2 border border-indigo-400/30">
+                    <span class="text-[9px] uppercase tracking-widest text-indigo-300 font-black">Staff / Waiter</span>
+                </div>
+            </div>
+
+            <nav class="flex-1 px-6 py-8 space-y-3 overflow-y-auto no-scrollbar">
+                <a th:href="@{/waiter/dashboard}" class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group opacity-70">
+                    <i class="fas fa-th-large text-indigo-400"></i> Dashboard
+                </a>
+                <a th:href="@{/waiter/areas}" class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group opacity-70">
+                    <i class="fas fa-plus-circle text-indigo-400"></i> New Order
+                </a>
+                <a th:href="@{/waiter/order-status}" class="flex items-center gap-4 p-4 bg-white/10 rounded-[1.5rem] font-bold shadow-lg shadow-black/10">
+                    <i class="fas fa-list-check text-indigo-400"></i> Order Status
+                </a>
+                <a th:href="@{/waiter/my-orders}" class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group opacity-70">
+                    <i class="fas fa-clipboard-list text-indigo-400"></i> My Orders
+                </a>
+            </nav>
+
+            <div class="p-8 border-t border-white/10">
+                <a th:href="@{/logout}" class="flex items-center justify-center gap-3 p-4 bg-red-500/10 hover:bg-red-500 rounded-2xl transition-all text-red-400 hover:text-white font-bold text-sm">
+                    <i class="fas fa-power-off"></i> Logout
+                </a>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col overflow-y-auto">
+            <header class="h-20 bg-white/80 backdrop-blur-md px-6 lg:px-10 flex justify-between items-center border-b border-slate-200 sticky top-0 z-20 shrink-0">
+                <div class="flex items-center gap-5">
+                    <button id="toggleSidebar" class="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-500">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <div class="w-1 h-8 waiter-gradient rounded-full"></div>
+                    <div>
+                        <h2 class="font-black text-slate-800 text-lg uppercase leading-none">Order Item Status Board</h2>
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">All pending workflow items</p>
+                    </div>
+                </div>
+                <button onclick="loadOrderBoard()"
+                    class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black uppercase tracking-widest">
+                    Refresh
+                </button>
+            </header>
+
+            <div class="p-6 lg:p-10 flex-1">
+                <div class="max-w-5xl mx-auto bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 lg:p-8">
+                    <div id="waiterBoardList" class="space-y-3">
+                        <div class="text-xs text-slate-400">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const body = document.body;
+            const wrapper = document.getElementById('mainWrapper');
+            if (window.innerWidth <= 1280) {
+                body.classList.toggle('sidebar-open');
+            } else {
+                wrapper.classList.toggle('sidebar-hidden');
+            }
+        }
+        document.getElementById('toggleSidebar').addEventListener('click', toggleSidebar);
+
+        function getStatusClass(status) {
+            if (status === 'Pending') return 'bg-amber-50 text-amber-700 border-amber-100';
+            if (status === 'Accepted') return 'bg-blue-50 text-blue-700 border-blue-100';
+            if (status === 'Cooked') return 'bg-indigo-50 text-indigo-700 border-indigo-100';
+            if (status === 'Served') return 'bg-violet-50 text-violet-700 border-violet-100';
+            if (status === 'Paid') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+            return 'bg-slate-50 text-slate-700 border-slate-100';
+        }
+
+        async function loadOrderBoard() {
+            const el = document.getElementById('waiterBoardList');
+            el.innerHTML = `<div class="text-xs text-slate-400">Loading...</div>`;
+            try {
+                const res = await fetch('/waiter/order-items');
+                const data = await res.json();
+                if (!data.length) {
+                    el.innerHTML = `<div class="text-xs text-slate-400 font-semibold">No active order items.</div>`;
+                    return;
+                }
+                el.innerHTML = data.map(row => {
+                    const canServe = row.item_status === 'Cooked';
+                    return `
+                        <div class="p-4 rounded-2xl border border-slate-100">
+                            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                                <div>
+                                    <p class="text-xs font-black text-slate-800">Order #${row.order_id} - Table ${row.table_number}</p>
+                                    <p class="text-sm text-slate-600 font-semibold">${row.menu_name} x${row.quantity}</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-3 py-1 rounded-xl text-[10px] font-black uppercase border ${getStatusClass(row.item_status)}">${row.item_status}</span>
+                                    ${canServe ? `<button onclick="serveItem(${row.order_item_id})" class="px-3 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-wider hover:bg-indigo-700">Mark Served</button>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (_) {
+                el.innerHTML = `<div class="text-xs text-red-500 font-semibold">Failed to load board.</div>`;
+            }
+        }
+
+        async function serveItem(orderItemId) {
+            const res = await fetch(`/waiter/order-items/${orderItemId}/serve`, { method: 'POST' });
+            const result = await res.json();
+            if (result.success) {
+                Swal.fire({ icon: 'success', title: 'Updated', text: result.message, timer: 1200, showConfirmButton: false });
+            } else {
+                Swal.fire({ icon: 'warning', title: 'Not allowed', text: result.message });
+            }
+            loadOrderBoard();
+        }
+
+        document.addEventListener('DOMContentLoaded', loadOrderBoard);
+    </script>
+</body>
+</html>

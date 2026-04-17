@@ -183,6 +183,9 @@ aside {
 				</a> <a th:href="@{/waiter/my-orders}"
 					class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group opacity-70">
 					<i class="fas fa-clipboard-list text-indigo-400"></i> My Orders
+				</a> <a th:href="@{/waiter/order-status}"
+					class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group opacity-70">
+					<i class="fas fa-list-check text-indigo-400"></i> Order Status
 				</a>
 			</nav>
 
@@ -331,21 +334,6 @@ aside {
 					</div>
 				</div>
 
-                <div class="mt-10 bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <h3 class="text-lg font-black text-slate-800">Order Item Status Board</h3>
-                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">All pending workflow items</p>
-                        </div>
-                        <button onclick="loadOrderBoard()"
-                            class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black uppercase tracking-widest">
-                            Refresh
-                        </button>
-                    </div>
-                    <div id="waiterBoardList" class="space-y-3">
-                        <div class="text-xs text-slate-400">Loading...</div>
-                    </div>
-                </div>
 			</div>
 
 			<form id="orderForm"
@@ -697,6 +685,7 @@ aside {
 
     async function loadOrderBoard() {
         const el = document.getElementById('waiterBoardList');
+        if (!el) return;
         el.innerHTML = `<div class="text-xs text-slate-400">Loading...</div>`;
         try {
             const res = await fetch('/waiter/order-items');
@@ -744,7 +733,6 @@ aside {
         updateCartUI();
         checkURLParams();
         loadMenuOptions();
-        loadOrderBoard();
         // Table locking method ကို ဖယ်ရှားလိုက်ပါပြီ
     });
 </script>

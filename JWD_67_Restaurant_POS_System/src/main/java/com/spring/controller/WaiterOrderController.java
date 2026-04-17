@@ -145,6 +145,13 @@ public class WaiterOrderController {
            return "my-orders";
        }
 
+       @GetMapping("/order-status")
+       public String viewOrderItemStatusBoard(HttpSession session) {
+           UserBean loginUser = (UserBean) session.getAttribute("loginUser");
+           if (loginUser == null || loginUser.getRoleId() != 2) return "redirect:/login";
+           return "waiter-order-status";
+       }
+
        @GetMapping("/order-items")
        @ResponseBody
        public List<Map<String, Object>> getOrderItemsBoard(HttpSession session) {
