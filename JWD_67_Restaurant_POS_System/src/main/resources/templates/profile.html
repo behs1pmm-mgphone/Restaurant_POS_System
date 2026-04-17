@@ -236,7 +236,7 @@ aside {
                                 <div class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-emerald-600"><i class="fas fa-shield-alt"></i></div>
                                 <div>
                                     <p class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Role Privilege</p>
-                                    <p class="font-bold text-slate-700" th:text="${user.roleId == 1 ? 'System Administrator' : 'Staff'}">System Administrator</p>
+                                    <p class="font-bold text-slate-700" th:text="${user.roleId == 1 ? 'System Administrator' : (user.roleId == 2 ? 'Waiter' : (user.roleId == 3 ? 'Chef' : (user.roleId == 4 ? 'Cashier' : 'Staff')))}">System Administrator</p>
                                 </div>
                             </div>
                             <div class="flex items-center gap-4">

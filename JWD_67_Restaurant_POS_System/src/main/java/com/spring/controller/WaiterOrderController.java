@@ -13,11 +13,14 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.spring.model.UserBean;
 import com.spring.service.AreaService;
 import com.spring.service.OrderService;
+import com.spring.service.OrderWorkflowService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -34,6 +37,9 @@ public class WaiterOrderController {
 
     @Autowired
     private AreaService areaService;
+
+    @Autowired
+    private OrderWorkflowService orderWorkflowService;
 
 
     @PostMapping("/tables/{id}/order")
@@ -74,8 +80,7 @@ public class WaiterOrderController {
        public String handleGoBack(@PathVariable("id") String encodedId) {
            int tableId = decodeId(encodedId);
 
-           // ၁။ ဒီ Table မှာ လက်ရှိ 'Open' status နဲ့ order ရှိ၊ မရှိ စစ်ဆေးခြင်း
-           String checkOrderSql = "SELECT COUNT(*) FROM `order` WHERE restaurant_table_id = ? AND status = 'Open'";
+           String checkOrderSql = "SELECT COUNT(*) FROM `order` WHERE restaurant_table_id = ? AND status = 'Pending'";
 
            // jdbcTemplate (j အသေး) ကို သုံးပြီး query လုပ်ပါ
            Integer activeOrders = jdbcTemplate.queryForObject(checkOrderSql, Integer.class, tableId);
@@ -96,7 +101,7 @@ public class WaiterOrderController {
 
            // ၂။ Table Cleanup Logic (မလိုအပ်ဘဲ Occupied ဖြစ်နေတာတွေကို ရှင်းမယ်)
            String cleanupSql = "UPDATE restaurant_table t " +
-                               "LEFT JOIN `order` o ON t.restaurant_table_id = o.restaurant_table_id AND o.status = 'Open' " +
+                               "LEFT JOIN `order` o ON t.restaurant_table_id = o.restaurant_table_id AND o.status = 'Pending' " +
                                "SET t.status = 'Available' " +
                                "WHERE o.order_id IS NULL AND t.status = 'Occupied'";
            jdbcTemplate.update(cleanupSql);
@@ -131,7 +136,7 @@ public class WaiterOrderController {
                         " WHERE oi.order_id = o.order_id) as item_details " +
                         "FROM `order` o " +
                         "JOIN restaurant_table t ON o.restaurant_table_id = t.restaurant_table_id " +
-                        "WHERE o.user_id = ? " +
+                        "WHERE o.created_by = ? " +
                         "ORDER BY o.order_date DESC";
 
            List<Map<String, Object>> orders = jdbcTemplate.queryForList(sql, user.getUserId());
@@ -139,6 +144,82 @@ public class WaiterOrderController {
 
            return "my-orders";
        }
+
+       @GetMapping("/order-items")
+       @ResponseBody
+       public List<Map<String, Object>> getOrderItemsBoard(HttpSession session) {
+           UserBean loginUser = (UserBean) session.getAttribute("loginUser");
+           if (loginUser == null || loginUser.getRoleId() != 2) {
+               return List.of();
+           }
+           return orderWorkflowService.getOrderItemsBoard();
+       }
+
+       @GetMapping("/my-orders/data")
+       @ResponseBody
+       public List<Map<String, Object>> getMyOrdersData(HttpSession session) {
+           UserBean loginUser = (UserBean) session.getAttribute("loginUser");
+           if (loginUser == null || loginUser.getRoleId() != 2) {
+               return List.of();
+           }
+           return orderWorkflowService.getWaiterOrdersWithItems(loginUser.getUserId());
+       }
+
+       @GetMapping("/menu-options")
+       @ResponseBody
+       public List<Map<String, Object>> getMenuOptions(HttpSession session) {
+           UserBean loginUser = (UserBean) session.getAttribute("loginUser");
+           if (loginUser == null || loginUser.getRoleId() != 2) {
+               return List.of();
+           }
+           return orderWorkflowService.getMenuOptions();
+       }
+
+       @PostMapping("/order-items/{id}/serve")
+       @ResponseBody
+       public Map<String, Object> serveOrderItem(@PathVariable("id") Integer orderItemId, HttpSession session) {
+           UserBean loginUser = (UserBean) session.getAttribute("loginUser");
+           if (loginUser == null || loginUser.getRoleId() != 2) {
+               return Map.of("success", false, "message", "Unauthorized");
+           }
+           boolean success = orderWorkflowService.updateItemStatusByRole(2, orderItemId, "Served");
+           return Map.of(
+                   "success", success,
+                   "message", success ? "Item marked as Served." : "Item cannot be served yet."
+           );
+       }
+
+       @PostMapping("/orders/{id}/items/add")
+       @ResponseBody
+       public Map<String, Object> addItemToOrder(@PathVariable("id") Integer orderId,
+                                                 @RequestParam("menuItemId") Integer menuItemId,
+                                                 @RequestParam("quantity") Integer quantity,
+                                                 @RequestParam(name = "note", required = false) String note,
+                                                 HttpSession session) {
+           UserBean loginUser = (UserBean) session.getAttribute("loginUser");
+           if (loginUser == null || loginUser.getRoleId() != 2) {
+               return Map.of("success", false, "message", "Unauthorized");
+           }
+           if (menuItemId == null || quantity == null || quantity <= 0) {
+               return Map.of("success", false, "message", "Invalid item or quantity.");
+           }
+           boolean success = orderWorkflowService.addItemToWaiterOrder(
+                   loginUser.getUserId(), orderId, menuItemId, quantity, note
+           );
+           return Map.of("success", success, "message", success ? "Item added to order." : "Cannot add item to this order.");
+       }
+
+       @PostMapping("/order-items/{id}/delete")
+       @ResponseBody
+       public Map<String, Object> deleteOrderItem(@PathVariable("id") Integer orderItemId, HttpSession session) {
+           UserBean loginUser = (UserBean) session.getAttribute("loginUser");
+           if (loginUser == null || loginUser.getRoleId() != 2) {
+               return Map.of("success", false, "message", "Unauthorized");
+           }
+           boolean success = orderWorkflowService.deleteOrderItemByWaiter(loginUser.getUserId(), orderItemId);
+           return Map.of("success", success, "message", success ? "Item removed from order." : "Cannot remove this item.");
+       }
+
        private String encodeId(Integer id) {
            if (id == null) return "";
            return Base64.getEncoder().encodeToString(id.toString().getBytes());

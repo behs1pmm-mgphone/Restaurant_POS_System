@@ -19,10 +19,10 @@ public class OrderService {
 
     // ၁။ Order အသစ်လုပ်ခြင်း
     public int createNewOrder(int tableId, int userId) {
-        String sql = "INSERT INTO `order` (restaurant_table_id, user_id, order_date, order_type, status, tax, service_charge, total_amount) " +
-                     "VALUES (?, ?, NOW(), 'Dine-in', 'Pending', 0.00, 0.00, 0.00)";
+        String sql = "INSERT INTO `order` (restaurant_table_id, user_id, created_by, order_date, order_type, status, tax, service_charge, total_amount) " +
+                     "VALUES (?, ?, ?, NOW(), 'Dine-in', 'Pending', 0.00, 0.00, 0.00)";
 
-        jdbcTemplate.update(sql, tableId, userId);
+        jdbcTemplate.update(sql, tableId, userId, userId);
         return jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Integer.class);
     }
 
@@ -61,7 +61,7 @@ public class OrderService {
                      "FROM `order` o " +
                      "LEFT JOIN order_item oi ON o.order_id = oi.order_id " +
                      "LEFT JOIN menu_item mi ON oi.menu_item_id = mi.menu_item_id " +
-                     "WHERE o.user_id = ? " +
+                     "WHERE o.created_by = ? " +
                      "GROUP BY o.order_id " +
                      "ORDER BY o.order_date DESC";
 

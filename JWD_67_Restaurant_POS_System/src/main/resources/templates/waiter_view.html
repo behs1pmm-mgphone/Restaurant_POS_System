@@ -221,6 +221,10 @@ aside {
 							class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-2xl text-[11px] font-black text-slate-600 uppercase tracking-widest transition-all">
 							<i class="fa fa-arrow-left mr-2"></i> Table List
 						</a>
+                        <button onclick="openMyOrders()"
+                            class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 rounded-2xl text-[11px] font-black text-white uppercase tracking-widest transition-all">
+                            <i class="fa fa-clipboard-list mr-2"></i> My Orders
+                        </button>
 					</div>
 					<div class="relative w-64">
 						<i
@@ -326,23 +330,38 @@ aside {
 						</div>
 					</div>
 				</div>
+
+                <div class="mt-10 bg-white rounded-3xl border border-slate-100 shadow-sm p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="text-lg font-black text-slate-800">Order Item Status Board</h3>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">All pending workflow items</p>
+                        </div>
+                        <button onclick="loadOrderBoard()"
+                            class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black uppercase tracking-widest">
+                            Refresh
+                        </button>
+                    </div>
+                    <div id="waiterBoardList" class="space-y-3">
+                        <div class="text-xs text-slate-400">Loading...</div>
+                    </div>
+                </div>
 			</div>
 
 			<form id="orderForm"
 				th:action="@{/waiter/tables/{id}/order(id=${maskedTableId})}"
 				method="POST" style="display: none;"></form>
 
-			<div id="ordersModal" class="hidden fixed inset-0 z-50">
+					<div id="ordersModal" class="hidden fixed inset-0 z-50">
 				<div class="absolute inset-0 bg-slate-900/50"
 					onclick="closeMyOrders()"></div>
 				<div
-					class="absolute right-0 top-0 h-full w-full sm:w-[28rem] bg-white shadow-2xl p-6 flex flex-col">
+					class="absolute right-0 top-0 h-full w-full sm:w-[42rem] bg-white shadow-2xl p-6 flex flex-col">
 					<div class="flex items-center justify-between mb-4">
 						<div>
 							<h3 class="text-lg font-black text-slate-800">My Orders</h3>
 							<p
-								class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Latest
-								30 orders</p>
+								class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Order-based view with item controls</p>
 						</div>
 						<button
 							class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600"
@@ -350,6 +369,14 @@ aside {
 							<i class="fa fa-times"></i>
 						</button>
 					</div>
+                    <div class="mb-4 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                            <select id="addItemMenu" class="sm:col-span-2 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm"></select>
+                            <input id="addItemQty" type="number" min="1" value="1" class="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm" placeholder="Qty">
+                            <input id="addItemNote" type="text" class="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm" placeholder="Note (optional)">
+                        </div>
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Choose an order below, then click Add Item on that order.</p>
+                    </div>
 					<div id="myOrdersList"
 						class="flex-1 overflow-y-auto no-scrollbar space-y-3"></div>
 				</div>
@@ -374,7 +401,7 @@ aside {
             Swal.fire({
                 icon: 'success',
                 title: 'ORDER SENT',
-                text: 'Order successfully sent to kitchen.',
+                text: 'Order successfully sent to chef.',
                 showConfirmButton: false,
                 timer: 2000,
                 timerProgressBar: true,
@@ -400,11 +427,47 @@ aside {
         document.getElementById('ordersModal').classList.add('hidden');
     }
 
+    function getOrderBadgeClass(status) {
+        if (status === 'Checkout') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+        return 'bg-amber-50 text-amber-700 border-amber-100';
+    }
+
+    function normalizeItemStatus(status) {
+        const s = String(status || '').trim().toLowerCase();
+        if (s === 'pending' || s === 'waiting') return 'Pending';
+        if (s === 'accepted' || s === 'cooking') return 'Accepted';
+        if (s === 'cooked' || s === 'ready') return 'Cooked';
+        if (s === 'served') return 'Served';
+        if (s === 'paid') return 'Paid';
+        return status || '-';
+    }
+
+    function getItemBadgeClass(status) {
+        const normalized = normalizeItemStatus(status);
+        if (normalized === 'Pending') return 'bg-amber-50 text-amber-700 border-amber-100';
+        if (normalized === 'Accepted') return 'bg-blue-50 text-blue-700 border-blue-100';
+        if (normalized === 'Cooked') return 'bg-indigo-50 text-indigo-700 border-indigo-100';
+        if (normalized === 'Served') return 'bg-violet-50 text-violet-700 border-violet-100';
+        if (normalized === 'Paid') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+        return 'bg-slate-50 text-slate-700 border-slate-100';
+    }
+
+    async function loadMenuOptions() {
+        const select = document.getElementById('addItemMenu');
+        try {
+            const res = await fetch('/waiter/menu-options');
+            const items = await res.json();
+            select.innerHTML = items.map(i => `<option value="${i.menu_item_id}">${i.name} (${Number(i.price).toLocaleString()} MMK)</option>`).join('');
+        } catch (_) {
+            select.innerHTML = '<option value="">No menu data</option>';
+        }
+    }
+
     async function loadMyOrders() {
         const list = document.getElementById('myOrdersList');
         list.innerHTML = `<div class="p-8 text-center"><i class="fa fa-spinner fa-spin text-slate-300 text-2xl mb-2"></i><p class="text-xs text-slate-400">Loading orders...</p></div>`;
         try {
-            const res = await fetch('/waiter/my-orders');
+            const res = await fetch('/waiter/my-orders/data');
             const orders = await res.json();
             if (!orders || !orders.length) {
                 list.innerHTML = `<div class="text-slate-400 text-sm font-semibold p-4 text-center">No orders yet.</div>`;
@@ -412,21 +475,51 @@ aside {
             }
 
             list.innerHTML = orders.map(o => {
-                const id = o.order_id ?? o.orderId ?? '-';
-                const table = o.table_number ?? o.tableNumber ?? '-';
-                const status = o.status ?? '-';
-                const total = o.total_amount ?? o.totalAmount ?? 0;
+                const id = o.order_id;
+                const table = o.table_number;
+                const status = o.order_status;
+                const total = o.total_amount || 0;
+                const items = o.items || [];
+                const itemRows = items.map(it => {
+                    const normalizedStatus = normalizeItemStatus(it.item_status);
+                    const serveBtn = normalizedStatus === 'Cooked'
+                        ? `<button onclick="serveItem(${it.order_item_id})" class="px-2 py-1 rounded-lg bg-indigo-600 text-white text-[10px] font-black uppercase">Serve</button>`
+                        : '';
+                    const deleteBtn = normalizedStatus !== 'Paid'
+                        ? `<button onclick="deleteItem(${it.order_item_id})" class="px-2 py-1 rounded-lg bg-red-50 text-red-600 text-[10px] font-black uppercase border border-red-100">Delete</button>`
+                        : '';
+                    return `
+                        <div class="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                <div>
+                                    <p class="text-xs font-black text-slate-800">${it.menu_name} x${it.quantity}</p>
+                                    <p class="text-[11px] font-semibold text-slate-500">${Number(it.total).toLocaleString()} MMK ${it.note ? `- ${it.note}` : ''}</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-1 rounded-lg text-[10px] font-black uppercase border ${getItemBadgeClass(normalizedStatus)}">${normalizedStatus}</span>
+                                    ${serveBtn}
+                                    ${deleteBtn}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
                 return `
                   <div class="p-4 rounded-2xl border border-slate-100 bg-white shadow-sm">
-                    <div class="flex items-center justify-between">
-                      <div class="font-black text-slate-800">#${id}</div>
-                      <div class="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-3">
+                      <div class="font-black text-slate-800">Order #${id} - Table ${table}</div>
+                      <div class="flex items-center gap-2">
+                        <div class="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${getOrderBadgeClass(status)}">
                         ${status}
+                        </div>
+                        <button onclick="addItemToOrder(${id})" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-wider">Add Item</button>
                       </div>
                     </div>
-                    <div class="mt-2 flex items-center justify-between text-sm">
-                      <div class="text-slate-600 font-bold">Table ${table}</div>
-                      <div class="text-emerald-600 font-black">${Number(total).toLocaleString()} MMK</div>
+                    <div class="space-y-2">
+                        ${itemRows || '<div class="text-xs text-slate-400 font-semibold">No items in this order.</div>'}
+                    </div>
+                    <div class="mt-3 text-right">
+                      <div class="text-emerald-600 font-black text-sm">Total: ${Number(total).toLocaleString()} MMK</div>
                     </div>
                   </div>
                 `;
@@ -434,6 +527,39 @@ aside {
         } catch (e) {
             list.innerHTML = `<div class="text-red-500 text-sm font-semibold p-4">Failed to load orders.</div>`;
         }
+    }
+
+    async function addItemToOrder(orderId) {
+        const menuItemId = document.getElementById('addItemMenu').value;
+        const quantity = document.getElementById('addItemQty').value;
+        const note = document.getElementById('addItemNote').value;
+
+        const form = new URLSearchParams();
+        form.append('menuItemId', menuItemId);
+        form.append('quantity', quantity);
+        form.append('note', note);
+
+        const res = await fetch(`/waiter/orders/${orderId}/items/add`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: form.toString()
+        });
+        const result = await res.json();
+        if (!result.success) {
+            Swal.fire({icon: 'warning', title: 'Cannot add', text: result.message});
+        }
+        loadMyOrders();
+        loadOrderBoard();
+    }
+
+    async function deleteItem(orderItemId) {
+        const res = await fetch(`/waiter/order-items/${orderItemId}/delete`, { method: 'POST' });
+        const result = await res.json();
+        if (!result.success) {
+            Swal.fire({icon: 'warning', title: 'Cannot delete', text: result.message});
+        }
+        loadMyOrders();
+        loadOrderBoard();
     }
 
     // ၃။ Menu Update & Search Logic
@@ -528,7 +654,7 @@ aside {
         summaryHtml += `</div>`;
 
         Swal.fire({
-            title: 'Send to Kitchen?',
+            title: 'Send to Chef?',
             html: summaryHtml,
             showCancelButton: true,
             confirmButtonText: 'Confirm Now',
@@ -560,10 +686,65 @@ aside {
         form.appendChild(input);
     }
 
+    function getStatusClass(status) {
+        if (status === 'Pending') return 'bg-amber-50 text-amber-700 border-amber-100';
+        if (status === 'Accepted') return 'bg-blue-50 text-blue-700 border-blue-100';
+        if (status === 'Cooked') return 'bg-indigo-50 text-indigo-700 border-indigo-100';
+        if (status === 'Served') return 'bg-violet-50 text-violet-700 border-violet-100';
+        if (status === 'Paid') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+        return 'bg-slate-50 text-slate-700 border-slate-100';
+    }
+
+    async function loadOrderBoard() {
+        const el = document.getElementById('waiterBoardList');
+        el.innerHTML = `<div class="text-xs text-slate-400">Loading...</div>`;
+        try {
+            const res = await fetch('/waiter/order-items');
+            const data = await res.json();
+            if (!data.length) {
+                el.innerHTML = `<div class="text-xs text-slate-400 font-semibold">No active order items.</div>`;
+                return;
+            }
+            el.innerHTML = data.map(row => {
+                const canServe = row.item_status === 'Cooked';
+                return `
+                    <div class="p-4 rounded-2xl border border-slate-100">
+                        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                            <div>
+                                <p class="text-xs font-black text-slate-800">Order #${row.order_id} - Table ${row.table_number}</p>
+                                <p class="text-sm text-slate-600 font-semibold">${row.menu_name} x${row.quantity}</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="px-3 py-1 rounded-xl text-[10px] font-black uppercase border ${getStatusClass(row.item_status)}">${row.item_status}</span>
+                                ${canServe ? `<button onclick="serveItem(${row.order_item_id})" class="px-3 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-wider hover:bg-indigo-700">Mark Served</button>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } catch (e) {
+            el.innerHTML = `<div class="text-xs text-red-500 font-semibold">Failed to load board.</div>`;
+        }
+    }
+
+    async function serveItem(orderItemId) {
+        const res = await fetch(`/waiter/order-items/${orderItemId}/serve`, { method: 'POST' });
+        const result = await res.json();
+        if (result.success) {
+            Swal.fire({ icon: 'success', title: 'Updated', text: result.message, timer: 1200, showConfirmButton: false });
+        } else {
+            Swal.fire({ icon: 'warning', title: 'Not allowed', text: result.message });
+        }
+        loadMyOrders();
+        loadOrderBoard();
+    }
+
     // ၆။ Page စဖွင့်ချိန်မှာ လုပ်မယ့်အလုပ်များ
     document.addEventListener("DOMContentLoaded", () => {
         updateCartUI();
         checkURLParams();
+        loadMenuOptions();
+        loadOrderBoard();
         // Table locking method ကို ဖယ်ရှားလိုက်ပါပြီ
     });
 </script>

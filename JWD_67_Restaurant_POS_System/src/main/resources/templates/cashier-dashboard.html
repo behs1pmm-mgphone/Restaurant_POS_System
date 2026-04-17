@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cashier Dashboard | Premium POS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+    <main class="max-w-6xl mx-auto px-6 py-10">
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-widest text-emerald-600">Role 4</p>
+                    <h1 class="text-3xl font-black mt-2">Cashier Dashboard</h1>
+                    <p class="mt-2 text-slate-600">Cashier can mark Served items as Paid.</p>
+                </div>
+                <a th:href="@{/logout}" class="px-5 py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600">
+                    Logout
+                </a>
+            </div>
+
+            <div class="mt-8">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-black">Payment Queue</h2>
+                    <button onclick="loadBoard()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-black uppercase">Refresh</button>
+                </div>
+                <div id="board" class="space-y-3"></div>
+            </div>
+        </div>
+    </main>
+    <script>
+        function badgeClass(status) {
+            if (status === 'Pending') return 'bg-amber-50 text-amber-700 border-amber-100';
+            if (status === 'Accepted') return 'bg-blue-50 text-blue-700 border-blue-100';
+            if (status === 'Cooked') return 'bg-indigo-50 text-indigo-700 border-indigo-100';
+            if (status === 'Served') return 'bg-violet-50 text-violet-700 border-violet-100';
+            if (status === 'Paid') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+            return 'bg-slate-50 text-slate-700 border-slate-100';
+        }
+
+        async function loadBoard() {
+            const root = document.getElementById('board');
+            root.innerHTML = '<p class="text-sm text-slate-400">Loading...</p>';
+            const res = await fetch('/cashier/order-items');
+            const items = await res.json();
+            const visible = items.filter(i => i.item_status === 'Served');
+            if (!visible.length) {
+                root.innerHTML = '<p class="text-sm text-slate-400 font-semibold">No served items waiting for payment.</p>';
+                return;
+            }
+            root.innerHTML = visible.map(i => `
+                <div class="p-4 rounded-2xl border border-slate-100">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-black text-slate-800">Order #${i.order_id} - Table ${i.table_number}</p>
+                            <p class="text-sm font-semibold text-slate-600">${i.menu_name} x${i.quantity}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-3 py-1 rounded-xl text-[10px] font-black uppercase border ${badgeClass(i.item_status)}">${i.item_status}</span>
+                            <button onclick="payItem(${i.order_item_id})" class="px-3 py-2 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase hover:bg-emerald-700">Mark Paid</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function payItem(id) {
+            await fetch(`/cashier/order-items/${id}/pay`, { method: 'POST' });
+            loadBoard();
+        }
+
+        loadBoard();
+    </script>
+</body>
+</html>

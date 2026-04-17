@@ -178,11 +178,12 @@ DROP TABLE IF EXISTS `order`;
 CREATE TABLE `order` (
   `order_id` int NOT NULL AUTO_INCREMENT,
   `order_date` datetime NOT NULL,
-  `order_type` varchar(10) NOT NULL,
-  `status` enum('Paid','Pending','Cancelled') NOT NULL DEFAULT 'Pending',
+  `order_type` enum('Dine-in','Other') NOT NULL DEFAULT 'Dine-in',
+  `status` enum('Pending','Checkout') NOT NULL DEFAULT 'Pending',
   `customer_id` int DEFAULT NULL,
   `restaurant_table_id` int NOT NULL,
   `user_id` int NOT NULL,
+  `created_by` int NOT NULL,
   `tax` decimal(5,2) NOT NULL,
   `service_charge` decimal(5,2) NOT NULL,
   `total_amount` decimal(10,2) NOT NULL,
@@ -190,10 +191,12 @@ CREATE TABLE `order` (
   KEY `fk_order_restaurant_table1_idx` (`restaurant_table_id`),
   KEY `fk_order_staff1_idx` (`user_id`),
   KEY `fk_order_customer1_idx` (`customer_id`),
+  KEY `fk_order_created_by_user` (`created_by`),
+  CONSTRAINT `fk_order_created_by_user` FOREIGN KEY (`created_by`) REFERENCES `user` (`user_id`),
   CONSTRAINT `fk_order_customer1` FOREIGN KEY (`customer_id`) REFERENCES `customer` (`customer_id`),
   CONSTRAINT `fk_order_restaurant_table1` FOREIGN KEY (`restaurant_table_id`) REFERENCES `restaurant_table` (`restaurant_table_id`),
   CONSTRAINT `fk_order_staff1` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb3;
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb3;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -202,7 +205,7 @@ CREATE TABLE `order` (
 
 LOCK TABLES `order` WRITE;
 /*!40000 ALTER TABLE `order` DISABLE KEYS */;
-INSERT INTO `order` VALUES (1,'2026-04-10 22:00:54','Dine-in','Pending',NULL,4,23,0.00,0.00,0.00),(2,'2026-04-11 13:31:49','Dine-in','Pending',NULL,5,23,0.00,0.00,0.00),(3,'2026-04-13 01:14:16','Dine-in','Pending',NULL,6,23,0.00,0.00,0.00),(4,'2026-04-13 01:23:53','Dine-in','Pending',NULL,5,23,0.00,0.00,0.00),(5,'2026-04-13 10:08:23','Dine-in','Pending',NULL,4,23,0.00,0.00,0.00),(6,'2026-04-13 11:12:48','Dine-in','Pending',NULL,5,23,0.00,0.00,8500.00),(7,'2026-04-13 20:32:25','Dine-in','Pending',NULL,4,23,0.00,0.00,21000.00),(8,'2026-04-13 20:33:52','Dine-in','Pending',NULL,4,23,0.00,0.00,27000.00);
+INSERT INTO `order` VALUES (1,'2026-04-10 22:00:54','Dine-in','Pending',NULL,4,23,23,0.00,0.00,0.00),(2,'2026-04-11 13:31:49','Dine-in','Pending',NULL,5,23,23,0.00,0.00,0.00),(3,'2026-04-13 01:14:16','Dine-in','Pending',NULL,6,23,23,0.00,0.00,0.00),(4,'2026-04-13 01:23:53','Dine-in','Pending',NULL,5,23,23,0.00,0.00,0.00),(5,'2026-04-13 10:08:23','Dine-in','Pending',NULL,4,23,23,0.00,0.00,0.00),(6,'2026-04-13 11:12:48','Dine-in','Pending',NULL,5,23,23,0.00,0.00,8500.00),(7,'2026-04-13 20:32:25','Dine-in','Pending',NULL,4,23,23,0.00,0.00,21000.00),(8,'2026-04-13 20:33:52','Dine-in','Pending',NULL,4,23,23,0.00,0.00,27000.00),(9,'2026-04-17 19:32:26','Dine-in','Pending',NULL,4,23,23,0.00,0.00,25500.00),(10,'2026-04-17 19:38:34','Dine-in','Pending',NULL,4,23,23,0.00,0.00,55500.00);
 /*!40000 ALTER TABLE `order` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -221,13 +224,14 @@ CREATE TABLE `order_item` (
   `quantity` int NOT NULL,
   `unit_price` decimal(10,2) NOT NULL,
   `total` decimal(10,2) NOT NULL,
-  `item_status` enum('Pending','Cooking','Ready','Served') NOT NULL DEFAULT 'Pending',
+  `item_status` enum('Pending','Accepted','Cooked','Served','Paid') NOT NULL DEFAULT 'Pending',
+  `status_order` tinyint GENERATED ALWAYS AS ((case `item_status` when _utf8mb3'WAITING' then 1 when _utf8mb3'ACCEPTED' then 2 when _utf8mb3'COOKED' then 3 when _utf8mb3'SERVED' then 4 when _utf8mb3'PAID' then 5 else 0 end)) STORED,
   PRIMARY KEY (`order_item_id`),
   KEY `fk_order_item_menu_item1_idx` (`menu_item_id`),
   KEY `fk_order_item_order1_idx` (`order_id`),
   CONSTRAINT `fk_order_item_menu_item1` FOREIGN KEY (`menu_item_id`) REFERENCES `menu_item` (`menu_item_id`),
   CONSTRAINT `fk_order_item_order1` FOREIGN KEY (`order_id`) REFERENCES `order` (`order_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb3;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb3;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -236,7 +240,7 @@ CREATE TABLE `order_item` (
 
 LOCK TABLES `order_item` WRITE;
 /*!40000 ALTER TABLE `order_item` DISABLE KEYS */;
-INSERT INTO `order_item` VALUES (1,6,1,'',1,8500.00,8500.00,'Pending'),(2,7,4,'',7,3000.00,21000.00,'Pending'),(3,8,2,'',3,9000.00,27000.00,'Pending');
+INSERT INTO `order_item` (`order_item_id`, `order_id`, `menu_item_id`, `note`, `quantity`, `unit_price`, `total`, `item_status`) VALUES (1,6,1,'',1,8500.00,8500.00,'Pending'),(2,7,4,'',7,3000.00,21000.00,'Pending'),(3,8,2,'',3,9000.00,27000.00,'Pending'),(4,9,1,'',3,8500.00,25500.00,'Pending'),(5,10,1,'',3,8500.00,25500.00,'Accepted'),(6,10,2,'',3,9000.00,27000.00,'Accepted'),(7,10,3,'',2,1500.00,3000.00,'Pending');
 /*!40000 ALTER TABLE `order_item` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -367,7 +371,7 @@ CREATE TABLE `restaurant_table` (
 
 LOCK TABLES `restaurant_table` WRITE;
 /*!40000 ALTER TABLE `restaurant_table` DISABLE KEYS */;
-INSERT INTO `restaurant_table` VALUES (1,101,'Available',1,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(2,201,'Available',2,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(3,301,'Available',3,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(4,105,'Available',4,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(5,106,'Available',4,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(6,108,'Available',4,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
+INSERT INTO `restaurant_table` VALUES (1,101,'Available',1,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(2,201,'Available',2,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(3,301,'Available',3,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(4,105,'Occupied',4,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(5,106,'Available',4,NULL,NULL,NULL,NULL,NULL,NULL,NULL),(6,108,'Available',4,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `restaurant_table` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -420,7 +424,7 @@ CREATE TABLE `user` (
   PRIMARY KEY (`user_id`),
   KEY `fk_staff_role1_idx` (`role_id`),
   CONSTRAINT `fk_user_role` FOREIGN KEY (`role_id`) REFERENCES `role` (`role_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb3;
+) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb3;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -429,7 +433,7 @@ CREATE TABLE `user` (
 
 LOCK TABLES `user` WRITE;
 /*!40000 ALTER TABLE `user` DISABLE KEYS */;
-INSERT INTO `user` VALUES (1,'Admin','$2a$10$6jtJSYTGZGskiPLK9IemSu/ERMlhF8B8zpjEcAtXU0Z/PNvF.rwxO','admin@gmail.com',1,0,0,'2026-03-10 07:30:00',1,1,'2026-04-07 15:39:47',1,'2026-04-07 15:39:47',1),(5,'Bo Bo','$2a$10$7Pbc8LuL9.S/19S.n6ZkUuO.qXoEaFhT.Gv8N8U/vK6j.qN.E/uLu','Bo11@gmail.com',2,0,0,'2026-04-03 09:38:14',NULL,1,'2026-04-07 16:17:26',13,'2026-04-07 16:17:26',13),(6,'Hla Hla','$2a$10$4D5z4RPoLpDsu..z3Jr8/uYfyVy83lIdKIarnCtN1wPgxbEEMdtg2','hla@gmail.com',3,0,0,'2026-04-05 16:56:08',1,1,'2026-04-05 16:57:36',NULL,NULL,NULL),(7,'Hla Hla ','$2a$10$b0PnTPyd0r3LjqyjYKUy5OEwL.77cQvt6Zk1hC4tEmSXxorz7tG6e','hla@gmail.com',3,0,0,'2026-04-05 17:00:01',1,1,'2026-04-05 17:02:40',NULL,NULL,NULL),(8,'Hla Hla ','$2a$10$uXbTpdM913V3gsqSVqR0QuiUi8Vb1IHhuA/bnQUkatKcp4UI3tesO','hla@gmail.com',3,0,0,'2026-04-05 17:02:53',1,1,'2026-04-05 17:04:41',NULL,NULL,NULL),(9,'Hla Hla ','$2a$10$rouN4DcPaQ47NALXGwLDROWqzwYjAVT29JJGiwmwUTPwtnNTIvZ6m','hla@gmail.com',1,1,0,'2026-04-05 17:04:51',1,1,'2026-04-07 16:17:23',13,'2026-04-07 16:17:23',13),(10,'Bo Bo','$2a$10$zHzYh1DjZkDm.t3xdEPwHerG42NUZ5ZI1pPo92A6cJ5tdT.WA8do.','bobo@gmail.com',2,0,0,'2026-04-07 11:25:31',1,1,'2026-04-07 12:25:55',NULL,'2026-04-07 12:16:51',NULL),(11,'BoBo','$2a$10$adetL6Ok771rnZNCsQKQ3.4armcxGNl2NQhNIRIAClgyJ.P4uM302','Bo11@gmail.com',2,0,0,'2026-04-07 15:25:02',1,1,'2026-04-07 15:25:55',NULL,NULL,NULL),(12,'PaPa','$2a$10$bH55b9hVaPsCCybIhxYyuueBTFPNgRuxOlrbPW2ifK7NCAjDEzXSO','Pa@gmail.com',2,0,0,'2026-04-07 15:39:42',1,1,'2026-04-07 16:17:19',13,'2026-04-07 16:17:19',13),(13,'Admin','$2a$10$6jtJSYTGZGskiPLK9IemSu/ERMlhF8B8zpjEcAtXU0Z/PNvF.rwxO','admin@gmail.com',1,0,0,'2026-04-07 16:15:31',NULL,1,'2026-04-07 16:17:16',13,'2026-04-07 16:17:16',13),(14,'Hla Hla','$2a$10$vmzPoTYGKExo6a8XiT4vSeRh7SRvmA13O/GS22BMC1CnIaoKds3qK','hla@gmail.com',2,0,0,'2026-04-07 16:18:19',13,0,NULL,NULL,'2026-04-07 16:18:19',NULL),(15,'Yar Yar','$2a$10$eH6PyYtl1iH.oITuKKbCmuMObjWojt457GPzz0fEQEo51jcYVOqO.','yar@gmail.com',1,0,0,'2026-04-07 16:24:19',13,0,NULL,NULL,'2026-04-07 16:24:19',NULL),(16,'Kyaw Kyaw','$2a$10$LtBXpu2Zf6yky1lbwCb4FuBWdJxRq8Y9Zqs6MOrodFkJJuszFQ7qe','kyaw@gmail.com',3,1,0,'2026-04-07 16:25:05',13,0,NULL,NULL,'2026-04-07 16:25:19',13),(17,'Po Po','$2a$10$3G.2geS5z5i9VDHIL0iP6.Lngz34FgyDUSRXJ1.wuPyL.FjSU/w0y','Po@gmail.com',4,0,0,'2026-04-07 16:28:38',13,1,'2026-04-07 16:28:42',13,'2026-04-07 16:28:42',13),(18,'SuSu','$2a$10$na7Fa9uYJiHJhZBpi0wFXOl2R2ui3SGdDS4D7naE24rSYudVfXuxq','Su11@gmail.com',2,0,0,'2026-04-07 16:38:51',15,0,NULL,NULL,'2026-04-07 17:57:29',15),(19,'Mya  Moe','$2a$10$h0gMzqCzOrbemqk1m3DtOeo5QYg9eK/JkAjWgzyFJadJfUFkn28vW','moe@gmail.com',4,1,0,'2026-04-07 18:43:39',15,0,NULL,NULL,'2026-04-07 18:47:28',15),(20,'NiNi','$2a$10$PcEcpdInw1.kG/ALqDZ0NeBAEGcJuV9YRzOY7zT09IV6Mw3rSBy8a','Ni@gmail.com',3,0,0,'2026-04-07 18:47:23',15,0,NULL,NULL,'2026-04-07 18:47:23',NULL),(21,'MaMa','$2a$10$4AQ459geo98BEq5SWzf2EeeD8T/nOkpJ6CvUVK3lbKpuB3JcsIEse','ma@gmail.com',2,0,0,'2026-04-07 18:47:54',15,0,NULL,NULL,'2026-04-07 18:47:54',NULL),(22,'PhyuPhyu','$2a$10$SBg4DBwSQ9zDX1RsQkxmSerH03QD5kdUXiWDZL4RcWo.MUV24of1C','phyu@gmail.com',2,0,0,'2026-04-07 18:48:20',15,0,NULL,NULL,'2026-04-07 18:48:20',NULL),(23,'Ye Ye','$2a$10$jnbsSqU5353Az3zlIbHK2uF6mbPqkmvx7ziyq3qFe.EDb/eHtG6Uu','ye@gmail.com',2,0,0,'2026-04-07 18:48:44',15,0,NULL,NULL,'2026-04-07 19:34:10',15),(24,'Mg Phone','$2a$10$3lgTauy9Qp8RpnX2p3LU3eTJIBQ8/qC.wvE.Cm1iONAq1IryN72W.','ye@gmail.com',2,0,0,'2026-04-07 18:57:59',15,1,'2026-04-07 18:59:05',15,'2026-04-07 18:59:05',15);
+INSERT INTO `user` VALUES (1,'Admin','$2a$10$6jtJSYTGZGskiPLK9IemSu/ERMlhF8B8zpjEcAtXU0Z/PNvF.rwxO','admin@gmail.com',1,0,0,'2026-03-10 07:30:00',1,1,'2026-04-07 15:39:47',1,'2026-04-07 15:39:47',1),(5,'Bo Bo','$2a$10$7Pbc8LuL9.S/19S.n6ZkUuO.qXoEaFhT.Gv8N8U/vK6j.qN.E/uLu','Bo11@gmail.com',2,0,0,'2026-04-03 09:38:14',NULL,1,'2026-04-07 16:17:26',13,'2026-04-07 16:17:26',13),(6,'Hla Hla','$2a$10$4D5z4RPoLpDsu..z3Jr8/uYfyVy83lIdKIarnCtN1wPgxbEEMdtg2','hla@gmail.com',3,0,0,'2026-04-05 16:56:08',1,1,'2026-04-05 16:57:36',NULL,NULL,NULL),(7,'Hla Hla ','$2a$10$b0PnTPyd0r3LjqyjYKUy5OEwL.77cQvt6Zk1hC4tEmSXxorz7tG6e','hla@gmail.com',3,0,0,'2026-04-05 17:00:01',1,1,'2026-04-05 17:02:40',NULL,NULL,NULL),(8,'Hla Hla ','$2a$10$uXbTpdM913V3gsqSVqR0QuiUi8Vb1IHhuA/bnQUkatKcp4UI3tesO','hla@gmail.com',3,0,0,'2026-04-05 17:02:53',1,1,'2026-04-05 17:04:41',NULL,NULL,NULL),(9,'Hla Hla ','$2a$10$rouN4DcPaQ47NALXGwLDROWqzwYjAVT29JJGiwmwUTPwtnNTIvZ6m','hla@gmail.com',1,1,0,'2026-04-05 17:04:51',1,1,'2026-04-07 16:17:23',13,'2026-04-07 16:17:23',13),(10,'Bo Bo','$2a$10$zHzYh1DjZkDm.t3xdEPwHerG42NUZ5ZI1pPo92A6cJ5tdT.WA8do.','bobo@gmail.com',2,0,0,'2026-04-07 11:25:31',1,1,'2026-04-07 12:25:55',NULL,'2026-04-07 12:16:51',NULL),(11,'BoBo','$2a$10$adetL6Ok771rnZNCsQKQ3.4armcxGNl2NQhNIRIAClgyJ.P4uM302','Bo11@gmail.com',2,0,0,'2026-04-07 15:25:02',1,1,'2026-04-07 15:25:55',NULL,NULL,NULL),(12,'PaPa','$2a$10$bH55b9hVaPsCCybIhxYyuueBTFPNgRuxOlrbPW2ifK7NCAjDEzXSO','Pa@gmail.com',2,0,0,'2026-04-07 15:39:42',1,1,'2026-04-07 16:17:19',13,'2026-04-07 16:17:19',13),(13,'Admin','$2a$10$6jtJSYTGZGskiPLK9IemSu/ERMlhF8B8zpjEcAtXU0Z/PNvF.rwxO','admin@gmail.com',1,0,0,'2026-04-07 16:15:31',NULL,1,'2026-04-07 16:17:16',13,'2026-04-07 16:17:16',13),(14,'Hla Hla','$2a$10$vmzPoTYGKExo6a8XiT4vSeRh7SRvmA13O/GS22BMC1CnIaoKds3qK','hla@gmail.com',2,0,0,'2026-04-07 16:18:19',13,0,NULL,NULL,'2026-04-07 16:18:19',NULL),(15,'Yar Yar','$2a$10$eH6PyYtl1iH.oITuKKbCmuMObjWojt457GPzz0fEQEo51jcYVOqO.','yar@gmail.com',1,0,0,'2026-04-07 16:24:19',13,0,NULL,NULL,'2026-04-07 16:24:19',NULL),(16,'Kyaw Kyaw','$2a$10$LtBXpu2Zf6yky1lbwCb4FuBWdJxRq8Y9Zqs6MOrodFkJJuszFQ7qe','kyaw@gmail.com',3,0,0,'2026-04-07 16:25:05',13,0,NULL,NULL,'2026-04-17 13:11:05',15),(17,'Po Po','$2a$10$3G.2geS5z5i9VDHIL0iP6.Lngz34FgyDUSRXJ1.wuPyL.FjSU/w0y','Po@gmail.com',4,0,0,'2026-04-07 16:28:38',13,1,'2026-04-07 16:28:42',13,'2026-04-07 16:28:42',13),(18,'SuSu','$2a$10$na7Fa9uYJiHJhZBpi0wFXOl2R2ui3SGdDS4D7naE24rSYudVfXuxq','Su11@gmail.com',2,0,0,'2026-04-07 16:38:51',15,0,NULL,NULL,'2026-04-07 17:57:29',15),(19,'Mya  Moe','$2a$10$h0gMzqCzOrbemqk1m3DtOeo5QYg9eK/JkAjWgzyFJadJfUFkn28vW','moe@gmail.com',4,0,0,'2026-04-07 18:43:39',15,0,NULL,NULL,'2026-04-17 13:12:19',15),(20,'NiNi','$2a$10$PcEcpdInw1.kG/ALqDZ0NeBAEGcJuV9YRzOY7zT09IV6Mw3rSBy8a','Ni@gmail.com',3,0,0,'2026-04-07 18:47:23',15,0,NULL,NULL,'2026-04-07 18:47:23',NULL),(21,'MaMa','$2a$10$4AQ459geo98BEq5SWzf2EeeD8T/nOkpJ6CvUVK3lbKpuB3JcsIEse','ma@gmail.com',2,0,0,'2026-04-07 18:47:54',15,0,NULL,NULL,'2026-04-07 18:47:54',NULL),(22,'PhyuPhyu','$2a$10$SBg4DBwSQ9zDX1RsQkxmSerH03QD5kdUXiWDZL4RcWo.MUV24of1C','phyu@gmail.com',2,0,0,'2026-04-07 18:48:20',15,0,NULL,NULL,'2026-04-07 18:48:20',NULL),(23,'Ye Ye','$2a$10$jnbsSqU5353Az3zlIbHK2uF6mbPqkmvx7ziyq3qFe.EDb/eHtG6Uu','ye@gmail.com',2,0,0,'2026-04-07 18:48:44',15,0,NULL,NULL,'2026-04-07 19:34:10',15),(24,'Mg Phone','$2a$10$3lgTauy9Qp8RpnX2p3LU3eTJIBQ8/qC.wvE.Cm1iONAq1IryN72W.','ye@gmail.com',2,0,0,'2026-04-07 18:57:59',15,1,'2026-04-07 18:59:05',15,'2026-04-07 18:59:05',15),(25,'zai','$2a$10$YGjE1J1ZG.PMMQYXJCySvOiYdb5eV3G28.16BasFiG20g7RFgpCq2','zaw@gmail.com',3,0,0,'2026-04-17 12:03:58',15,0,NULL,NULL,'2026-04-17 12:34:04',15);
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -442,4 +446,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-04-17 18:17:09
+-- Dump completed on 2026-04-17 20:32:16

@@ -63,10 +63,10 @@ public class AuthController {
                     return "redirect:/admin/dashboard";
                 case 2: // Waiter
                     return "redirect:/waiter/dashboard";
-                case 3: // Cashier
+                case 3: // Chef
+                    return "redirect:/chef/dashboard";
+                case 4: // Cashier
                     return "redirect:/cashier/dashboard";
-                case 4: // Kitchen
-                    return "redirect:/kitchen/dashboard";
                 default:
                     return "redirect:/home";
             }
