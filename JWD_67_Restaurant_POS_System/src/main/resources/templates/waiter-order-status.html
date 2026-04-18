@@ -14,6 +14,9 @@
         .sidebar-gradient { background: linear-gradient(180deg, #1E1B4B 0%, #312E81 100%); }
         .waiter-gradient { background: linear-gradient(135deg, #4338CA 0%, #6366F1 100%); }
         aside { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 50; }
+        .filter-btn.active { background: linear-gradient(135deg, #4338CA 0%, #6366F1 100%) !important; color: white !important; }
+        .order-card { transition: all 0.3s ease; border: 2px solid transparent; }
+        .order-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.1); border-color: #6366F1; }
         @media (max-width: 1280px) {
             aside { position: fixed; height: 100vh; left: -18rem; }
             .sidebar-open aside { left: 0; }
@@ -47,9 +50,6 @@
                 <a th:href="@{/waiter/order-status}" class="flex items-center gap-4 p-4 bg-white/10 rounded-[1.5rem] font-bold shadow-lg shadow-black/10">
                     <i class="fas fa-list-check text-indigo-400"></i> Order Status
                 </a>
-                <a th:href="@{/waiter/my-orders}" class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group opacity-70">
-                    <i class="fas fa-clipboard-list text-indigo-400"></i> My Orders
-                </a>
             </nav>
 
             <div class="p-8 border-t border-white/10">
@@ -67,8 +67,8 @@
                     </button>
                     <div class="w-1 h-8 waiter-gradient rounded-full"></div>
                     <div>
-                        <h2 class="font-black text-slate-800 text-lg uppercase leading-none">Order Item Status Board</h2>
-                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">All pending workflow items</p>
+                        <h2 class="font-black text-slate-800 text-lg uppercase leading-none">Order Status Board</h2>
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">All orders with item workflow</p>
                     </div>
                 </div>
                 <button onclick="loadOrderBoard()"
@@ -78,8 +78,18 @@
             </header>
 
             <div class="p-6 lg:p-10 flex-1">
-                <div class="max-w-5xl mx-auto bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 lg:p-8">
-                    <div id="waiterBoardList" class="space-y-3">
+                <div class="max-w-6xl mx-auto">
+                    <!-- Filter Tabs -->
+                    <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-4 mb-6">
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="filterOrders('all')" class="filter-btn px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-slate-900 text-white" data-filter="all">All Orders</button>
+                            <button onclick="filterOrders('pending')" class="filter-btn px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-slate-100 text-slate-600 hover:bg-slate-200" data-filter="pending">Pending</button>
+                            <button onclick="filterOrders('checkout')" class="filter-btn px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-slate-100 text-slate-600 hover:bg-slate-200" data-filter="checkout">Checkout</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Orders List -->
+                    <div id="waiterBoardList" class="space-y-4">
                         <div class="text-xs text-slate-400">Loading...</div>
                     </div>
                 </div>
@@ -99,12 +109,19 @@
         }
         document.getElementById('toggleSidebar').addEventListener('click', toggleSidebar);
 
-        function getStatusClass(status) {
+        function itemLabel(status) {
+            if (status === 'Pending') return 'Created';
+            if (status === 'Accepted') return 'Approved';
+            if (status === 'Cooked') return 'Cooked';
+            if (status === 'Served') return 'Reserved';
+            return status;
+        }
+
+        function itemClass(status) {
             if (status === 'Pending') return 'bg-amber-50 text-amber-700 border-amber-100';
             if (status === 'Accepted') return 'bg-blue-50 text-blue-700 border-blue-100';
             if (status === 'Cooked') return 'bg-indigo-50 text-indigo-700 border-indigo-100';
-            if (status === 'Served') return 'bg-violet-50 text-violet-700 border-violet-100';
-            if (status === 'Paid') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+            if (status === 'Served') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
             return 'bg-slate-50 text-slate-700 border-slate-100';
         }
 
@@ -112,26 +129,68 @@
             const el = document.getElementById('waiterBoardList');
             el.innerHTML = `<div class="text-xs text-slate-400">Loading...</div>`;
             try {
-                const res = await fetch('/waiter/order-items');
-                const data = await res.json();
-                if (!data.length) {
-                    el.innerHTML = `<div class="text-xs text-slate-400 font-semibold">No active order items.</div>`;
+                const res = await fetch('/waiter/orders/board');
+                const orders = await res.json();
+                if (!orders.length) {
+                    el.innerHTML = `<div class="text-xs text-slate-400 font-semibold">No orders found.</div>`;
                     return;
                 }
-                el.innerHTML = data.map(row => {
-                    const canServe = row.item_status === 'Cooked';
+
+                el.innerHTML = orders.map(order => {
+                    const items = order.items || [];
+                    const createdAt = order.order_date ? new Date(order.order_date).toLocaleString() : '-';
+                    const orderBadge = order.order_status === 'Checkout'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                        : 'bg-amber-50 text-amber-700 border-amber-100';
+
+                    const itemsHtml = items.length
+                        ? items.map(item => {
+                            const canReserve = item.item_status === 'Cooked' && order.order_status === 'Pending';
+                            return `
+                                <div class="p-3 rounded-xl border border-slate-100 bg-slate-50">
+                                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                        <div>
+                                            <p class="text-sm font-black text-slate-800">${item.menu_name} x${item.quantity}</p>
+                                            <p class="text-xs text-slate-500 font-semibold">${Number(item.unit_price || 0).toLocaleString()} MMK each | Total ${Number(item.total || 0).toLocaleString()} MMK</p>
+                                            ${item.note ? `<p class="text-[11px] text-slate-400">Note: ${item.note}</p>` : ''}
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="px-3 py-1 rounded-xl text-[10px] font-black uppercase border ${itemClass(item.item_status)}">${itemLabel(item.item_status)}</span>
+                                            ${canReserve ? `<button onclick="serveItem(${item.order_item_id})" class="px-3 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase hover:bg-indigo-700">Mark Reserved</button>` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')
+                        : '<div class="text-xs text-slate-400 font-semibold">No items in this order.</div>';
+
+                    const canEdit = order.order_status === 'Pending';
+                    const editBtn = canEdit 
+                        ? `<button onclick="editOrder(${order.order_id})" class="px-3 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase hover:bg-indigo-700 transition-all">
+                            <i class="fa fa-edit mr-1"></i> Edit Order
+                           </button>`
+                        : '';
+                    
                     return `
-                        <div class="p-4 rounded-2xl border border-slate-100">
-                            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-                                <div>
-                                    <p class="text-xs font-black text-slate-800">Order #${row.order_id} - Table ${row.table_number}</p>
-                                    <p class="text-sm text-slate-600 font-semibold">${row.menu_name} x${row.quantity}</p>
+                        <div class="order-card p-5 rounded-2xl border border-slate-100 bg-white shadow-sm" data-status="${order.order_status.toLowerCase()}">
+                            <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-4">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <span class="px-3 py-1 rounded-xl text-[10px] font-black uppercase border ${orderBadge}">${order.order_status}</span>
+                                        <p class="text-lg font-black text-slate-800">Order #${order.order_id}</p>
+                                        <span class="px-2 py-1 bg-slate-100 rounded-lg text-xs font-bold text-slate-600">Table ${order.table_number}</span>
+                                    </div>
+                                    <div class="flex flex-wrap gap-4 text-[11px] text-slate-500 font-semibold">
+                                        <span><i class="fa fa-clock mr-1"></i>${createdAt}</span>
+                                        <span><i class="fa fa-user mr-1"></i>${order.waiter_name || '-'}</span>
+                                        <span class="text-lg font-black text-emerald-700">${Number(order.total_amount || 0).toLocaleString()} MMK</span>
+                                    </div>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    <span class="px-3 py-1 rounded-xl text-[10px] font-black uppercase border ${getStatusClass(row.item_status)}">${row.item_status}</span>
-                                    ${canServe ? `<button onclick="serveItem(${row.order_item_id})" class="px-3 py-2 rounded-xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-wider hover:bg-indigo-700">Mark Served</button>` : ''}
+                                    ${editBtn}
                                 </div>
                             </div>
+                            <div class="space-y-3">${itemsHtml}</div>
                         </div>
                     `;
                 }).join('');
@@ -149,6 +208,270 @@
                 Swal.fire({ icon: 'warning', title: 'Not allowed', text: result.message });
             }
             loadOrderBoard();
+        }
+
+        // Filter orders functionality
+        function filterOrders(status) {
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-slate-900', 'text-white');
+                btn.classList.add('bg-slate-100', 'text-slate-600');
+            });
+            
+            const activeBtn = document.querySelector(`[data-filter="${status}"]`);
+            activeBtn.classList.remove('bg-slate-100', 'text-slate-600');
+            activeBtn.classList.add('active', 'bg-slate-900', 'text-white');
+            
+            const orders = document.querySelectorAll('.order-card');
+            orders.forEach(order => {
+                if (status === 'all' || order.dataset.status === status) {
+                    order.style.display = 'block';
+                } else {
+                    order.style.display = 'none';
+                }
+            });
+        }
+
+        // Edit order functionality
+        let editingOrderId = null;
+        let editingOrderItems = [];
+
+        async function editOrder(orderId) {
+            editingOrderId = orderId;
+            
+            // Load order details
+            try {
+                const res = await fetch(`/waiter/orders/${orderId}/details`);
+                const orderData = await res.json();
+                
+                if (!orderData.success) {
+                    Swal.fire('Error', orderData.message, 'error');
+                    return;
+                }
+                
+                editingOrderItems = orderData.items || [];
+                showEditOrderModal(orderData.order);
+                
+            } catch (error) {
+                Swal.fire('Error', 'Failed to load order details', 'error');
+            }
+        }
+
+        function showEditOrderModal(order) {
+            const itemsHtml = editingOrderItems.map((item, index) => `
+                <div class="edit-item p-3 rounded-xl border border-slate-100 bg-slate-50 mb-3" data-index="${index}">
+                    <div class="flex flex-col md:flex-row md:items-center gap-3">
+                        <div class="flex-1">
+                            <p class="text-sm font-black text-slate-800">${item.menu_name}</p>
+                            <p class="text-xs text-slate-500">${Number(item.unit_price).toLocaleString()} MMK each</p>
+                            ${item.note ? `<p class="text-xs text-blue-500 mt-1">Note: ${item.note}</p>` : ''}
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-1">
+                                <button onclick="updateItemQty(${index}, -1)" class="w-6 h-6 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">-</button>
+                                <span class="px-2 py-1 bg-white rounded-lg text-sm font-bold text-slate-700 min-w-[40px] text-center">${item.quantity}</span>
+                                <button onclick="updateItemQty(${index}, 1)" class="w-6 h-6 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">+</button>
+                            </div>
+                            <button onclick="removeEditItem(${index})" class="px-2 py-1 rounded-lg bg-red-50 text-red-600 text-[10px] font-black uppercase border border-red-100">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            Swal.fire({
+                title: `Edit Order #${order.order_id}`,
+                html: `
+                    <div class="text-left">
+                        <div class="mb-4 p-3 bg-slate-50 rounded-xl">
+                            <p class="text-sm font-bold text-slate-700">Table ${order.table_number} • Total: <span id="editTotal">${calculateEditTotal()}</span> MMK</p>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="flex gap-2 mb-3">
+                                <select id="addEditItemMenu" class="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm">
+                                    <option value="">Select menu item...</option>
+                                </select>
+                                <input id="addEditItemQty" type="number" min="1" value="1" class="w-20 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm" placeholder="Qty">
+                                <input id="addEditItemNote" type="text" class="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm" placeholder="Note (optional)">
+                                <button onclick="addEditItem()" class="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-black uppercase hover:bg-indigo-700">
+                                    <i class="fa fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="editItemsList" class="max-h-60 overflow-y-auto space-y-2">
+                            ${itemsHtml}
+                        </div>
+                    </div>
+                `,
+                width: '800px',
+                showCancelButton: true,
+                confirmButtonText: 'Save Changes',
+                cancelButtonText: 'Cancel',
+                preConfirm: () => {
+                    return saveOrderChanges();
+                },
+                didOpen: () => {
+                    loadEditMenuOptions();
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire('Success', 'Order updated successfully', 'success');
+                    loadOrderBoard();
+                }
+            });
+        }
+
+        async function loadEditMenuOptions() {
+            try {
+                const res = await fetch('/waiter/menu-options');
+                const items = await res.json();
+                const select = document.getElementById('addEditItemMenu');
+                select.innerHTML = '<option value="">Select menu item...</option>' + 
+                    items.map(i => `<option value="${i.menu_item_id}">${i.name} (${Number(i.price).toLocaleString()} MMK)</option>`).join('');
+            } catch (error) {
+                console.error('Failed to load menu options:', error);
+            }
+        }
+
+        function calculateEditTotal() {
+            return editingOrderItems.reduce((total, item) => total + (item.unit_price * item.quantity), 0).toLocaleString();
+        }
+
+        function updateItemQty(index, change) {
+            editingOrderItems[index].quantity += change;
+            if (editingOrderItems[index].quantity <= 0) {
+                removeEditItem(index);
+            } else {
+                refreshEditItemsList();
+            }
+        }
+
+        function removeEditItem(index) {
+            editingOrderItems.splice(index, 1);
+            refreshEditItemsList();
+        }
+
+        function refreshEditItemsList() {
+            const list = document.getElementById('editItemsList');
+            const itemsHtml = editingOrderItems.map((item, index) => `
+                <div class="edit-item p-3 rounded-xl border border-slate-100 bg-slate-50 mb-3" data-index="${index}">
+                    <div class="flex flex-col md:flex-row md:items-center gap-3">
+                        <div class="flex-1">
+                            <p class="text-sm font-black text-slate-800">${item.menu_name}</p>
+                            <p class="text-xs text-slate-500">${Number(item.unit_price).toLocaleString()} MMK each</p>
+                            ${item.note ? `<p class="text-xs text-blue-500 mt-1">Note: ${item.note}</p>` : ''}
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-1">
+                                <button onclick="updateItemQty(${index}, -1)" class="w-6 h-6 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">-</button>
+                                <span class="px-2 py-1 bg-white rounded-lg text-sm font-bold text-slate-700 min-w-[40px] text-center">${item.quantity}</span>
+                                <button onclick="updateItemQty(${index}, 1)" class="w-6 h-6 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">+</button>
+                            </div>
+                            <button onclick="removeEditItem(${index})" class="px-2 py-1 rounded-lg bg-red-50 text-red-600 text-[10px] font-black uppercase border border-red-100">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            list.innerHTML = itemsHtml;
+            document.getElementById('editTotal').innerText = calculateEditTotal();
+        }
+
+        async function addEditItem() {
+            const menuItemId = document.getElementById('addEditItemMenu').value;
+            const quantity = parseInt(document.getElementById('addEditItemQty').value);
+            const note = document.getElementById('addEditItemNote').value;
+            
+            if (!menuItemId || !quantity || quantity <= 0) {
+                Swal.fire('Warning', 'Please select a menu item and quantity', 'warning');
+                return;
+            }
+            
+            try {
+                const res = await fetch('/waiter/menu-options');
+                const menuItems = await res.json();
+                const selectedItem = menuItems.find(item => item.menu_item_id == menuItemId);
+                
+                if (!selectedItem) {
+                    Swal.fire('Error', 'Menu item not found', 'error');
+                    return;
+                }
+                
+                editingOrderItems.push({
+                    menu_item_id: selectedItem.menu_item_id,
+                    menu_name: selectedItem.name,
+                    unit_price: selectedItem.price,
+                    quantity: quantity,
+                    note: note,
+                    total: selectedItem.price * quantity
+                });
+                
+                // Reset form
+                document.getElementById('addEditItemMenu').value = '';
+                document.getElementById('addEditItemQty').value = '1';
+                document.getElementById('addEditItemNote').value = '';
+                
+                refreshEditItemsList();
+                
+            } catch (error) {
+                Swal.fire('Error', 'Failed to add item', 'error');
+            }
+        }
+
+        async function saveOrderChanges() {
+            if (!editingOrderId || editingOrderItems.length === 0) {
+                Swal.showValidationMessage('Order must have at least one item');
+                return false;
+            }
+            
+            try {
+                console.log('=== DEBUG: saveOrderChanges called ===');
+                console.log('Editing Order ID:', editingOrderId);
+                console.log('Editing Order Items:', editingOrderItems);
+                
+                // Prepare data as JSON
+                const requestData = {
+                    items: editingOrderItems.map(item => ({
+                        orderItemId: item.order_item_id || null,
+                        menuItemId: item.menu_item_id,
+                        quantity: item.quantity,
+                        note: item.note || '',
+                        unitPrice: item.unit_price,
+                        total: item.unit_price * item.quantity
+                    }))
+                };
+                
+                console.log('Sending JSON data:', requestData);
+                
+                const response = await fetch(`/waiter/orders/${editingOrderId}/edit`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+                
+                const result = await response.json();
+                console.log('Response result:', result);
+                
+                if (!result.success) {
+                    Swal.showValidationMessage(result.message || 'Failed to save changes');
+                    return false;
+                }
+                
+                return true;
+                
+            } catch (error) {
+                Swal.showValidationMessage('Network error. Please try again.');
+                return false;
+            }
         }
 
         document.addEventListener('DOMContentLoaded', loadOrderBoard);

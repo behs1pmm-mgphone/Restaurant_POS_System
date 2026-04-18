@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import com.spring.dto.OrderEditRequest;
 import com.spring.model.UserBean;
 import com.spring.service.AreaService;
 import com.spring.service.OrderService;
@@ -24,6 +25,8 @@ import com.spring.service.OrderWorkflowService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @Controller
 @RequestMapping("/waiter")
@@ -123,26 +126,10 @@ public class WaiterOrderController {
        }
 
        @GetMapping("/my-orders")
-       public String viewMyOrders(HttpSession session, Model model) {
-           UserBean user = (UserBean) session.getAttribute("loginUser");
-           if (user == null) return "redirect:/login";
-
-           // GROUP_CONCAT ထဲမှာ Item အချက်အလက်တွေကို 'Name:Qty:Price' ပုံစံနဲ့ တွဲထုတ်ပါမယ်
-           // ';' နဲ့ တစ်ခုချင်းစီကို ခွဲထားပါတယ်
-           String sql = "SELECT o.order_id, o.order_date, o.status, o.order_type, t.table_number, " +
-                        "(SELECT SUM(total) FROM order_item WHERE order_id = o.order_id) as total_amount, " +
-                        "(SELECT GROUP_CONCAT(CONCAT(mi.name, ':', oi.quantity, ':', oi.unit_price) SEPARATOR '; ') " +
-                        " FROM order_item oi JOIN menu_item mi ON oi.menu_item_id = mi.menu_item_id " +
-                        " WHERE oi.order_id = o.order_id) as item_details " +
-                        "FROM `order` o " +
-                        "JOIN restaurant_table t ON o.restaurant_table_id = t.restaurant_table_id " +
-                        "WHERE o.created_by = ? " +
-                        "ORDER BY o.order_date DESC";
-
-           List<Map<String, Object>> orders = jdbcTemplate.queryForList(sql, user.getUserId());
-           model.addAttribute("myOrders", orders);
-
-           return "my-orders";
+       public String redirectLegacyMyOrders(HttpSession session) {
+           UserBean loginUser = (UserBean) session.getAttribute("loginUser");
+           if (loginUser == null || loginUser.getRoleId() != 2) return "redirect:/login";
+           return "redirect:/waiter/order-status";
        }
 
        @GetMapping("/order-status")
@@ -160,6 +147,16 @@ public class WaiterOrderController {
                return List.of();
            }
            return orderWorkflowService.getOrderItemsBoard();
+       }
+
+       @GetMapping("/orders/board")
+       @ResponseBody
+       public List<Map<String, Object>> getOrdersBoard(HttpSession session) {
+           UserBean loginUser = (UserBean) session.getAttribute("loginUser");
+           if (loginUser == null || loginUser.getRoleId() != 2) {
+               return List.of();
+           }
+           return orderWorkflowService.getOrdersBoard();
        }
 
        @GetMapping("/my-orders/data")
@@ -192,7 +189,7 @@ public class WaiterOrderController {
            boolean success = orderWorkflowService.updateItemStatusByRole(2, orderItemId, "Served");
            return Map.of(
                    "success", success,
-                   "message", success ? "Item marked as Served." : "Item cannot be served yet."
+                   "message", success ? "Item marked as Reserved." : "Item cannot be reserved yet."
            );
        }
 
@@ -225,6 +222,46 @@ public class WaiterOrderController {
            }
            boolean success = orderWorkflowService.deleteOrderItemByWaiter(loginUser.getUserId(), orderItemId);
            return Map.of("success", success, "message", success ? "Item removed from order." : "Cannot remove this item.");
+       }
+
+       @GetMapping("/orders/{id}/details")
+       @ResponseBody
+       public Map<String, Object> getOrderDetails(@PathVariable("id") Integer orderId, HttpSession session) {
+           UserBean loginUser = (UserBean) session.getAttribute("loginUser");
+           if (loginUser == null || loginUser.getRoleId() != 2) {
+               return Map.of("success", false, "message", "Unauthorized");
+           }
+           
+           try {
+               Map<String, Object> orderDetails = orderWorkflowService.getOrderDetailsForEdit(orderId, loginUser.getUserId());
+               return Map.of("success", true, "order", orderDetails.get("order"), "items", orderDetails.get("items"));
+           } catch (Exception e) {
+               return Map.of("success", false, "message", "Failed to load order details: " + e.getMessage());
+           }
+       }
+
+       @PostMapping("/orders/{id}/edit")
+       @ResponseBody
+       public Map<String, Object> editOrder(@PathVariable("id") Integer orderId,
+                                           @RequestBody OrderEditRequest editRequest,
+                                           HttpSession session) {
+           UserBean loginUser = (UserBean) session.getAttribute("loginUser");
+           if (loginUser == null || loginUser.getRoleId() != 2) {
+               return Map.of("success", false, "message", "Unauthorized");
+           }
+           
+           try {
+               // Debug: Log request data
+               System.out.println("DEBUG: Editing order " + orderId + " for user " + loginUser.getUserId());
+               System.out.println("DEBUG: Request items count: " + (editRequest.getItems() != null ? editRequest.getItems().size() : 0));
+               
+               boolean success = orderWorkflowService.updateOrderWithJson(orderId, loginUser.getUserId(), editRequest);
+               return Map.of("success", success, "message", success ? "Order updated successfully." : "Failed to update order.");
+           } catch (Exception e) {
+               System.err.println("ERROR in editOrder: " + e.getMessage());
+               e.printStackTrace();
+               return Map.of("success", false, "message", "Error updating order: " + e.getMessage());
+           }
        }
 
        private String encodeId(Integer id) {
