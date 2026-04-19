@@ -72,4 +72,42 @@ public class OrderService {
         String sql = "UPDATE `order` SET total_amount = ? WHERE order_id = ?";
         jdbcTemplate.update(sql, total, orderId);
     }
+
+    // Method to fetch settled/paid orders for admin view
+    public List<Map<String, Object>> getSettledOrders() {
+        String sql = "SELECT o.order_id, o.order_date, o.order_type, o.total_amount, " +
+                     "COALESCE(p.payment_method, 'Not Paid') as payment_method, " +
+                     "COALESCE(p.transaction_date, o.order_date) as transaction_date, " +
+                     "COALESCE(p.final_amount, o.total_amount) as final_amount, " +
+                     "COALESCE(p.status, 'Pending') as payment_status, " +
+                     "rt.table_number, rt.area_id, a.area_name, " +
+                     "u.user_name as created_by_name, " +
+                     "GROUP_CONCAT(mi.name SEPARATOR ', ') as item_names, " +
+                     "COUNT(oi.order_item_id) as item_count, " +
+                     "SUM(oi.quantity) as total_quantity " +
+                     "FROM `order` o " +
+                     "LEFT JOIN payment p ON o.order_id = p.order_id " +
+                     "LEFT JOIN restaurant_table rt ON o.restaurant_table_id = rt.restaurant_table_id " +
+                     "LEFT JOIN area a ON rt.area_id = a.area_id " +
+                     "LEFT JOIN user u ON o.created_by = u.user_id " +
+                     "LEFT JOIN order_item oi ON o.order_id = oi.order_id " +
+                     "LEFT JOIN menu_item mi ON oi.menu_item_id = mi.menu_item_id " +
+                     "WHERE o.status = 'Checkout' " +
+                     "GROUP BY " +
+                     "  o.order_id, " +
+                     "  o.order_date, " +
+                     "  o.order_type, " +
+                     "  o.total_amount, " +
+                     "  p.payment_method, " +
+                     "  p.transaction_date, " +
+                     "  p.final_amount, " +
+                     "  p.status, " +
+                     "  rt.table_number, " +
+                     "  rt.area_id, " +
+                     "  a.area_name, " +
+                     "  u.user_name " +
+                     "ORDER BY o.order_date DESC";
+
+        return jdbcTemplate.queryForList(sql);
+    }
 }
