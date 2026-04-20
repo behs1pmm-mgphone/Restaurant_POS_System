@@ -401,78 +401,76 @@
                 });
                 
                 const result = await res.json();
+                console.log('[processPayment] checkout response', { httpStatus: res.status, ok: res.ok, body: result });
                 Swal.close();
                 
                 if (result.success) {
+                    // Must capture before closePaymentModal() — that clears currentOrderId
+                    const orderIdForPdf = result.orderId != null ? Number(result.orderId) : currentOrderId;
+                    console.log('[processPayment] order id for PDF', { orderIdForPdf, fromApi: result.orderId, wasModal: currentOrderId });
                     closePaymentModal();
                     
-                    // Generate and download PDF invoice
+                    let pdfOk = false;
+                    const pdfUrl = `/cashier/orders/${orderIdForPdf}/pdf`;
                     try {
-                        console.log('=== PDF GENERATION DEBUG ===');
-                        console.log('Order ID:', currentOrderId);
-                        
-                        const pdfUrl = `/cashier/orders/${currentOrderId}/pdf`;
-                        console.log('PDF URL:', pdfUrl);
-                        
-                        // Use fetch to get PDF as blob
-                        fetch(pdfUrl)
-                            .then(response => {
-                                console.log('PDF Response status:', response.status);
-                                if (!response.ok) {
-                                    throw new Error(`HTTP error! status: ${response.status}`);
-                                }
-                                return response.blob();
-                            })
-                            .then(blob => {
-                                console.log('PDF blob received, size:', blob.size);
-                                
-                                // Create download link
-                                const url = window.URL.createObjectURL(blob);
-                                const link = document.createElement('a');
-                                link.style.display = 'none';
-                                link.href = url;
-                                link.download = `invoice_${currentOrderId}.pdf`;
-                                
-                                // Trigger download
-                                document.body.appendChild(link);
-                                link.click();
-                                
-                                // Cleanup
-                                setTimeout(() => {
-                                    document.body.removeChild(link);
-                                    window.URL.revokeObjectURL(url);
-                                    console.log('PDF download completed');
-                                }, 100);
-                            })
-                            .catch(error => {
-                                console.error('PDF download failed:', error);
-                                Swal.fire({
-                                    icon: 'warning',
-                                    title: 'PDF Download Failed',
-                                    text: 'Payment was successful but PDF download failed. You can download the invoice later.',
-                                    timer: 3000,
-                                    showConfirmButton: false
-                                });
-                            });
-                        
+                        console.log('[processPayment] fetching PDF', pdfUrl);
+                        const pdfRes = await fetch(pdfUrl);
+                        const ct = pdfRes.headers.get('content-type') || '';
+                        console.log('[processPayment] PDF response', {
+                            status: pdfRes.status,
+                            statusText: pdfRes.statusText,
+                            contentType: ct,
+                            contentLength: pdfRes.headers.get('content-length')
+                        });
+                        if (!pdfRes.ok) {
+                            let errDetail = '';
+                            try {
+                                const errText = await pdfRes.clone().text();
+                                errDetail = errText ? errText.slice(0, 400) : '';
+                                if (errDetail) console.warn('[processPayment] PDF error body (first 400 chars)', errDetail);
+                            } catch (e) {
+                                console.warn('[processPayment] could not read PDF error body', e);
+                            }
+                            throw new Error(`PDF request failed: HTTP ${pdfRes.status} ${pdfRes.statusText}${errDetail ? ' — ' + errDetail : ''}`);
+                        }
+                        const blob = await pdfRes.blob();
+                        console.log('[processPayment] PDF blob', { size: blob.size, type: blob.type });
+                        if (!blob.size) {
+                            throw new Error('PDF blob is empty');
+                        }
+                        const url = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.style.display = 'none';
+                        link.href = url;
+                        link.download = `invoice_${orderIdForPdf}.pdf`;
+                        document.body.appendChild(link);
+                        link.click();
+                        setTimeout(() => {
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(url);
+                            console.log('[processPayment] PDF download triggered, object URL revoked');
+                        }, 100);
+                        pdfOk = true;
                     } catch (pdfError) {
-                        console.error('PDF download failed:', pdfError);
+                        console.error('[processPayment] PDF step failed', pdfError);
                         Swal.fire({
                             icon: 'warning',
                             title: 'PDF Download Failed',
-                            text: 'Payment was successful but PDF download failed. You can download the invoice later.',
-                            timer: 3000,
+                            text: 'Payment was successful but PDF download failed. Use the PDF button on the order card to try again.',
+                            timer: 4000,
                             showConfirmButton: false
                         });
                     }
                     
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Your payment was successful!',
-                        text: 'Payment completed successfully. Invoice has been downloaded.',
-                        timer: 3000,
-                        showConfirmButton: false
-                    });
+                    if (pdfOk) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Payment successful',
+                            text: 'Payment completed. Invoice download started.',
+                            timer: 3000,
+                            showConfirmButton: false
+                        });
+                    }
                     loadBoard();
                 } else {
                     Swal.fire({
@@ -483,6 +481,7 @@
                 }
             } catch (error) {
                 Swal.close();
+                console.error('[processPayment] network or parse error', error);
                 Swal.fire({
                     icon: 'error',
                     title: 'Network Error',
@@ -521,6 +520,8 @@
         }
 
         async function exportPdf(orderId) {
+            const pdfUrl = `/cashier/orders/${orderId}/pdf`;
+            console.log('[exportPdf] start', { orderId, pdfUrl });
             try {
                 Swal.fire({
                     title: 'Generating PDF...',
@@ -531,13 +532,30 @@
                     }
                 });
                 
-                const response = await fetch(`/cashier/orders/${orderId}/pdf`);
+                const response = await fetch(pdfUrl);
+                const ct = response.headers.get('content-type') || '';
+                console.log('[exportPdf] response', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    contentType: ct,
+                    contentLength: response.headers.get('content-length')
+                });
                 
                 if (!response.ok) {
-                    throw new Error('PDF generation failed');
+                    try {
+                        const t = await response.clone().text();
+                        if (t) console.warn('[exportPdf] error body (first 400 chars)', t.slice(0, 400));
+                    } catch (e) {
+                        console.warn('[exportPdf] could not read error body', e);
+                    }
+                    throw new Error(`PDF generation failed: HTTP ${response.status}`);
                 }
                 
                 const blob = await response.blob();
+                console.log('[exportPdf] blob', { size: blob.size, type: blob.type });
+                if (!blob.size) {
+                    throw new Error('PDF blob is empty');
+                }
                 const url = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
@@ -546,6 +564,7 @@
                 link.click();
                 document.body.removeChild(link);
                 window.URL.revokeObjectURL(url);
+                console.log('[exportPdf] download triggered');
                 
                 Swal.close();
                 
@@ -558,7 +577,7 @@
                 });
             } catch (error) {
                 Swal.close();
-                console.error('PDF generation error:', error);
+                console.error('[exportPdf] failed', error);
                 Swal.fire({
                     icon: 'error',
                     title: 'PDF Generation Failed',

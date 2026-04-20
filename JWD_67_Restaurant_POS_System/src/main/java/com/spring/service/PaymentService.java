@@ -21,6 +21,40 @@ public class PaymentService {
     public PaymentService(JdbcTemplate jdbcTemplate, BillingService billingService) {
         this.jdbcTemplate = jdbcTemplate;
         this.billingService = billingService;
+        // Initialize database schema
+        initializePaymentSchema();
+    }
+    
+    private void initializePaymentSchema() {
+        try {
+            System.out.println("=== INITIALIZING PAYMENT TABLE SCHEMA ===");
+            
+            // Check if columns exist and add them if they don't
+            String[] columnsToAdd = {
+                "total_amount DECIMAL(10,2)",
+                "subtotal DECIMAL(10,2)", 
+                "tax DECIMAL(10,2)",
+                "service_charge DECIMAL(10,2)",
+                "grand_total DECIMAL(10,2)"
+            };
+            
+            for (String columnDef : columnsToAdd) {
+                String columnName = columnDef.split(" ")[0];
+                try {
+                    jdbcTemplate.queryForObject("SELECT " + columnName + " FROM payment LIMIT 1", Object.class);
+                    System.out.println("Column " + columnName + " already exists");
+                } catch (Exception e) {
+                    // Column doesn't exist, add it
+                    String alterSql = "ALTER TABLE payment ADD COLUMN " + columnDef;
+                    jdbcTemplate.execute(alterSql);
+                    System.out.println("Added column: " + columnName);
+                }
+            }
+            
+            System.out.println("=== PAYMENT TABLE SCHEMA INITIALIZED ===");
+        } catch (Exception e) {
+            System.err.println("Error initializing payment schema: " + e.getMessage());
+        }
     }
 
     @Transactional
@@ -167,9 +201,10 @@ public class PaymentService {
             System.out.println("Payment details - Order ID: " + orderId + ", Method: " + paymentMethod + ", Report ID: " + reportId);
             
             int rowsAffected = jdbcTemplate.update(
-                "INSERT INTO payment (order_id, final_amount, subtotal, tax, service_charge, grand_total, payment_method, transaction_date, status, sale_report_report_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Success', ?)",
+                "INSERT INTO payment (order_id, final_amount, total_amount, subtotal, tax, service_charge, grand_total, payment_method, transaction_date, status, sale_report_report_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Success', ?)",
                 orderId,
                 grandTotal, // final_amount should be the grand total
+                grandTotal, // total_amount should also be the grand total
                 subtotal,
                 tax,
                 serviceCharge,
