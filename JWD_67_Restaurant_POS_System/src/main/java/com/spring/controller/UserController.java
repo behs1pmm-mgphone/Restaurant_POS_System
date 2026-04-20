@@ -1,6 +1,7 @@
 package com.spring.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCrypt;
@@ -12,10 +13,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.spring.model.UserBean;
 import com.spring.repository.UserRepository;
+import com.spring.service.OrderService;
 import com.spring.service.UserService;
 
 import jakarta.servlet.http.HttpSession;
@@ -29,6 +32,9 @@ public class UserController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private OrderService orderService;
 
     @GetMapping("/users")
     public String listUsers(Model model,
@@ -134,6 +140,19 @@ public class UserController {
 
         userService.updateUserStatus(userId, status, loginUser.getUserId());
         return "redirect:/admin/users";
+    }
+
+    @GetMapping("/order-management")
+    public String viewOrderManagement(Model model, HttpSession session) {
+        UserBean loginUser = (UserBean) session.getAttribute("loginUser");
+        if (loginUser == null || loginUser.getRoleId() != 1) {
+            return "redirect:/login";
+        }
+
+        List<Map<String, Object>> settledOrders = orderService.getSettledOrders();
+        model.addAttribute("settledOrders", settledOrders);
+        
+        return "admin-order-management";
     }
 
     @GetMapping("/profile")
