@@ -148,6 +148,33 @@ aside {
 	margin: 5px;
 	cursor: pointer;
 }
+
+/* Professional Sold Out Design */
+.menu-card.sold-out {
+    filter: grayscale(0.9);
+    opacity: 0.6;
+    position: relative;
+    pointer-events: auto; /* Click လုပ်လို့ရအောင် ထားရပါမယ် */
+    transition: all 0.3s ease;
+}
+
+.menu-card.sold-out .item-img {
+    filter: grayscale(1);
+}
+
+/* Sold out ဖြစ်နေတဲ့ item ရဲ့ button ကို အရောင်မှိန်ပစ်မယ် */
+.menu-card.sold-out button {
+    background-color: #94a3b8 !important; /* နဂိုအရောင်အစား မီးခိုးရောင်ပြောင်းမည် */
+    color: #f1f5f9 !important;
+    cursor: pointer;
+}
+
+/* Hover လုပ်တဲ့အခါ ပိုမှိန်သွားစေပြီး ရွေးလို့မရမှန်း ပိုသိသာစေရန် */
+.menu-card.sold-out:hover {
+    transform: none;
+    box-shadow: none;
+    opacity: 0.5;
+}
 </style>
 </head>
 <body class="bg-[#F8FAFC]">
@@ -248,55 +275,56 @@ aside {
 							<button class="cat-btn"
 								th:classappend="${currentCat == '3'} ? 'active'"
 								onclick="filterCategory('3', this)">Drinks</button>
+							<button class="cat-btn"
+								th:classappend="${currentCat == '4'} ? 'active'"
+								onclick="filterCategory('4', this)">Dessert</button>
 						</div>
 
-						<div id="menuSection" th:fragment="menuSection">
-							<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-								<div th:each="item : ${items}"
-									class="menu-card shadow-sm border border-slate-100">
-									<img th:src="@{'/' + ${item.image}}" class="item-img"
-										alt="Menu Item"
-										onerror="this.src='https://placehold.co/400x300?text=Food'">
-									<div class="p-5 flex-1 flex flex-col">
-										<h4 class="font-bold text-slate-800 mb-1 text-sm truncate"
-											th:text="${item.name}">Dish Name</h4>
-										<p class="text-emerald-600 font-black text-sm mb-4"
-											th:text="${#numbers.formatDecimal(item.price, 0, 'COMMA', 0, 'POINT')} + ' MMK'"></p>
-										<button
-											class="mt-auto w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all"
-											th:onclick="addToCart([[${item.id}]], [[${item.name}]], [[${item.price}]])">
-											<i class="fa fa-plus mr-2"></i> Add to order
-										</button>
-									</div>
-								</div>
-							</div>
+					<div id="menuSection" th:fragment="menuSection">
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <div th:each="item : ${items}"
+             th:classappend="${item.stockQuantity <= 0} ? 'menu-card shadow-sm border border-slate-100 relative sold-out' : 'menu-card shadow-sm border border-slate-100 relative'">
+            
+            <img th:src="@{'/' + ${item.image}}" class="item-img"
+                alt="Menu Item"
+                onerror="this.src='https://placehold.co/400x300?text=Food'">
+            
+            <div class="p-5 flex-1 flex flex-col">
+                <h4 class="font-bold text-slate-800 mb-1 text-sm truncate"
+                    th:text="${item.name}">Dish Name</h4>
+                <p class="text-emerald-600 font-black text-sm mb-4"
+                    th:text="${#numbers.formatDecimal(item.price, 0, 'COMMA', 0, 'POINT')} + ' MMK'"></p>
+                
+                <button
+                    class="mt-auto w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all"
+                    th:onclick="addToCart([[${item.id}]], [[${item.name}]], [[${item.price}]])">
+                    <i class="fa fa-plus mr-2"></i> 
+                    <span th:text="${item.stockQuantity <= 0} ? 'Unavailable' : 'Add to order'">Add to order</span>
+                </button>
+            </div>
+        </div>
+    </div>
 
-							<div class="mt-12 flex flex-col items-center gap-4"
-								th:if="${totalPages > 0}">
-								<div
-									class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-									Page <span th:text="${currentPage}">1</span> of <span
-										th:text="${totalPages}">1</span>
-								</div>
-								<div class="flex gap-2">
-									<button
-										class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed"
-										th:onclick="'updateContent(' + (${currentPage} - 1) + ')'"
-										th:disabled="${currentPage <= 1}">
-										<i class="fa fa-chevron-left"></i>
-									</button>
-									<button
-										class="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold"
-										th:text="${currentPage}">1</button>
-									<button
-										class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed"
-										th:onclick="'updateContent(' + (${currentPage} + 1) + ')'"
-										th:disabled="${currentPage >= totalPages}">
-										<i class="fa fa-chevron-right"></i>
-									</button>
-								</div>
-							</div>
-						</div>
+    <div class="mt-12 flex flex-col items-center gap-4" th:if="${totalPages > 0}">
+        <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            Page <span th:text="${currentPage}">1</span> of <span th:text="${totalPages}">1</span>
+        </div>
+        <div class="flex gap-2">
+            <button class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                th:onclick="'updateContent(' + (${currentPage} - 1) + ')'"
+                th:disabled="${currentPage <= 1}">
+                <i class="fa fa-chevron-left"></i>
+            </button>
+            <button class="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold"
+                th:text="${currentPage}">1</button>
+            <button class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                th:onclick="'updateContent(' + (${currentPage} + 1) + ')'"
+                th:disabled="${currentPage >= totalPages}">
+                <i class="fa fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+</div>
 					</div>
 
 					<div class="w-full lg:w-96 shrink-0">
@@ -566,12 +594,30 @@ aside {
     }
 
     // ၄။ Cart/Basket Logic
-    function addToCart(id, name, price) {
-        let exist = cart.find(i => i.id === id);
-        if(exist) { exist.qty++; }
-        else { cart.push({id, name, price, qty: 1, note: ''}); }
-        updateCartUI();
+ function addToCart(id, name, price) {
+    // လက်ရှိ နှိပ်လိုက်တဲ့ item card ကို ရှာတာပါ
+    const btn = event.currentTarget;
+    const menuCard = btn.closest('.menu-card');
+    
+    // class 'sold-out' ပါနေရင် order ထဲ ပေးမထည့်တော့ဘူး
+    if (menuCard && menuCard.classList.contains('sold-out')) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Unavailable',
+            text: 'This menu is currently Unavailable',
+            confirmButtonColor: '#4338CA'
+        });
+        return; 
     }
+    
+    let exist = cart.find(i => i.id === id);
+    if(exist) { 
+        exist.qty++; 
+    } else { 
+        cart.push({id, name, price, qty: 1, note: ''}); 
+    }
+    updateCartUI();
+}
 
     function updateCartUI() {
         const cont = document.getElementById('cartContent');

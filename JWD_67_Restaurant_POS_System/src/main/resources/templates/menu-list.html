@@ -111,9 +111,18 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 /* Sold Out Row Opacity */
 .sold-out-row {
-    opacity: 0.5;
     background-color: #f1f5f9 !important;
     transition: all 0.4s ease;
+}
+
+/* Actions Column (နောက်ဆုံး Column) ကလွဲပြီး ကျန်တဲ့ အစိတ်အပိုင်းတွေကိုပဲ မှိန်စေတာပါ */
+.sold-out-row td:not(:last-child) {
+    opacity: 0.5;
+}
+
+/* History (Audit Trail) box ပေါ်လာရင် အကြည်အတိုင်း ၁၀၀% ပြန်မြင်ရအောင် လုပ်တာပါ */
+.sold-out-row .group-hover\:opacity-100 {
+    opacity: 1 !important;
 }
 
 </style>
@@ -245,7 +254,7 @@ input:checked + .slider:before { transform: translateX(20px); }
                         </thead>
                        <tbody class="divide-y divide-slate-50">
    <tr th:each="item : ${items}" 
-        th:classappend="${item['status'] == 'Sold Out' ? 'sold-out-row' : ''}" 
+        th:classappend="${item['status'] == 'Unavailable' ? 'sold-out-row' : ''}" 
         class="hover:bg-slate-50/50 transition-all">
         
         <td class="py-6 font-extrabold text-slate-800 text-xs"></td>
@@ -272,7 +281,7 @@ input:checked + .slider:before { transform: translateX(20px); }
         </label>
         <span class="status-label text-[9px] font-black uppercase tracking-wider"
               th:classappend="${item['status'] == 'Available' ? 'text-emerald-500' : 'text-slate-400'}"
-              th:text="${item['status']}">
+              th:text="${item['status'] == 'Available' ? 'Available' : 'Unavailable'}">
             Available
         </span>
     </div>
@@ -512,7 +521,7 @@ input:checked + .slider:before { transform: translateX(20px); }
     /* status */
    async function toggleStatus(id, checkbox) {
     const isChecked = checkbox.checked;
-    const newStatus = isChecked ? 'Available' : 'Sold Out';
+    const newStatus = isChecked ? 'Available' : 'Unavailable';
     
     // UI feedback ပေးဖို့ row နဲ့ label ကို ယူမယ်
     const row = checkbox.closest('tr');

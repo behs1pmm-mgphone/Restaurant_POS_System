@@ -11,5 +11,5 @@ public class WaiterView {
     private double price;
     private String category;
     private String image;
-    private boolean stockQuantity;
+    private Integer stockQuantity;
 }

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,6 +36,9 @@ public class MenuItemController {
 
     @Autowired
     private CategoryService categoryService;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     private final String UPLOAD_DIR = "C:/pos_images/";
 

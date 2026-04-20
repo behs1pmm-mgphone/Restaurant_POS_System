@@ -54,15 +54,16 @@ public class WaiterViewRepository {
             item.setPrice(rs.getDouble("price"));
 
             // This retrieves the filename (e.g., 'burger.jpg')
-            // Our Thymeleaf tag will prefix this with /uploads/
             item.setImage(rs.getString("image"));
 
             item.setCategory(String.valueOf(rs.getInt("category_id")));
 
-            // Availability Logic
+            // Availability Logic (Integer အဖြစ်သို့ ပြောင်းလဲခြင်း)
             String status = rs.getString("status");
             boolean isAvailable = (status != null && status.trim().equalsIgnoreCase("Available"));
-            item.setStockQuantity(isAvailable);
+            
+            // model ထဲက setStockQuantity(Integer) နဲ့ ကိုက်ညီအောင် 1 သို့မဟုတ် 0 ထည့်ပေးပါ
+            item.setStockQuantity(isAvailable ? 1 : 0);
 
             return item;
         }, params.toArray());

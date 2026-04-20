@@ -44,7 +44,8 @@ public class MenuItemService {
         Object catObj = data.get("categoryId");
         int catId = Integer.parseInt(catObj != null ? catObj.toString() : "1");
 
-        String status = String.valueOf(data.getOrDefault("status", "Available"));
+        // Always set new items to "Available" status
+        String status = "Available";
         menuRepo.save(name, price, catId, status, img, adminId);
     }
 
