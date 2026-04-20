@@ -63,9 +63,6 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-4">
-                        <button onclick="loadBoard()" class="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-bold hover:from-indigo-600 hover:to-purple-700 transition-all shadow-lg">
-                            <i class="fas fa-sync-alt mr-2"></i> Refresh
-                        </button>
                         <a th:href="@{/logout}" class="px-6 py-3 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl font-bold hover:from-red-600 hover:to-pink-600 transition-all shadow-lg">
                             <i class="fas fa-sign-out-alt mr-2"></i> Logout
                         </a>
@@ -123,21 +120,27 @@
 
             <!-- Orders Queue -->
             <div class="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl p-8">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-2xl font-black text-slate-800">
-                        <i class="fas fa-receipt text-blue-500 mr-3"></i>
-                        Order Management
-                    </h2>
-                    <div class="flex items-center gap-2">
-                        <span class="px-3 py-1 bg-slate-100 rounded-lg text-sm font-semibold text-slate-600">
-                            <i class="fas fa-filter mr-1"></i> All Orders
+                <div class="flex items-center justify-between mb-8">
+                    <div>
+                        <h2 class="text-3xl font-black text-slate-800 mb-2">
+                            <i class="fas fa-receipt text-blue-500 mr-3"></i>
+                            Order Management
+                        </h2>
+                        <p class="text-slate-600 font-medium">Manage and process customer orders</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl text-sm font-semibold text-blue-700">
+                            <i class="fas fa-list mr-2"></i> All Orders
                         </span>
+                        <button onclick="loadBoard()" class="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-bold hover:from-emerald-600 hover:to-teal-700 transition-all shadow-lg">
+                            <i class="fas fa-sync-alt mr-2"></i> Refresh
+                        </button>
                     </div>
                 </div>
-                <div id="board" class="space-y-4">
-                    <div class="text-center py-12">
+                <div id="board" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <div class="col-span-full text-center py-16">
                         <i class="fas fa-spinner fa-spin text-4xl text-slate-300 mb-4"></i>
-                        <p class="text-slate-500 font-semibold">Loading orders...</p>
+                        <p class="text-slate-500 font-semibold text-lg">Loading orders...</p>
                     </div>
                 </div>
             </div>
@@ -207,13 +210,13 @@
                 
                 if (!orders.length) {
                     root.innerHTML = `
-                        <div class="text-center py-16">
-                            <div class="w-24 h-24 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                                <i class="fas fa-receipt text-white text-4xl"></i>
+                        <div class="col-span-full text-center py-20">
+                            <div class="w-32 h-32 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl">
+                                <i class="fas fa-receipt text-white text-5xl"></i>
                             </div>
-                            <h3 class="text-2xl font-bold text-slate-800 mb-2">No Orders Yet</h3>
-                            <p class="text-slate-600">No orders found in the system.</p>
-                            <p class="text-sm text-slate-500 mt-2">New orders will appear here automatically.</p>
+                            <h3 class="text-3xl font-bold text-slate-800 mb-3">No Orders Yet</h3>
+                            <p class="text-slate-600 text-lg mb-2">No orders found in the system.</p>
+                            <p class="text-sm text-slate-500">New orders will appear here automatically.</p>
                         </div>
                     `;
                     return;
@@ -226,25 +229,33 @@
                     const canCheckout = o.order_status === 'Pending' && allReserved;
     
                     const itemRows = items.map(i => {
-                        const noteDisplay = i.note ? `<div class="mt-1 p-1 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                        const noteDisplay = i.note ? `<div class="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
                             <i class="fas fa-sticky-note mr-1"></i>${i.note}
                         </div>` : '';
                         
                         return `
-                            <div class="p-3 bg-gradient-to-r from-slate-50 to-slate-100 rounded-xl border border-slate-200">
-                                <div class="flex items-start justify-between gap-3">
+                            <div class="p-4 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl border border-slate-200 hover:border-slate-300 transition-colors">
+                                <div class="flex items-start justify-between gap-4">
                                     <div class="flex-1">
-                                        <div class="flex items-center gap-2 mb-1">
-                                            <h4 class="text-sm font-black text-slate-800">${i.menu_name}</h4>
-                                            <span class="px-2 py-1 bg-slate-800 text-white text-xs font-bold rounded-full">x${i.quantity}</span>
+                                        <div class="flex items-center gap-3 mb-2">
+                                            <h4 class="text-base font-bold text-slate-800">${i.menu_name}</h4>
+                                            <span class="px-3 py-1 bg-gradient-to-r from-slate-700 to-slate-800 text-white text-xs font-bold rounded-full shadow-md">x${i.quantity}</span>
                                         </div>
-                                        <div class="flex items-center gap-3 text-xs text-slate-600 mb-1">
-                                            <span><i class="fas fa-tag mr-1"></i>${Number(i.unit_price || 0).toLocaleString()} MMK each</span>
-                                            <span><i class="fas fa-calculator mr-1"></i>${Number(i.total || 0).toLocaleString()} MMK</span>
+                                        <div class="flex items-center gap-4 text-sm text-slate-600 mb-3">
+                                            <span class="flex items-center gap-1">
+                                                <i class="fas fa-tag text-slate-400"></i>
+                                                ${Number(i.unit_price || 0).toLocaleString()} MMK each
+                                            </span>
+                                            <span class="flex items-center gap-1">
+                                                <i class="fas fa-calculator text-slate-400"></i>
+                                                ${Number(i.total || 0).toLocaleString()} MMK
+                                            </span>
                                         </div>
-                                        <span class="px-2 py-1 text-xs font-bold border ${itemBadgeClass(i.item_status)} rounded-lg">
-                                            ${getStatusIcon(i.item_status)} ${itemLabel(i.item_status)}
-                                        </span>
+                                        <div class="flex items-center gap-2">
+                                            <span class="px-3 py-1 text-xs font-bold border ${itemBadgeClass(i.item_status)} rounded-lg">
+                                                ${getStatusIcon(i.item_status)} ${itemLabel(i.item_status)}
+                                            </span>
+                                        </div>
                                         ${noteDisplay}
                                     </div>
                                 </div>
@@ -253,48 +264,74 @@
                     }).join('');
     
                     return `
-                        <div class="order-card bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-                            <div class="bg-gradient-to-r from-slate-800 to-slate-900 p-4">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                                            <i class="fas fa-receipt text-white"></i>
+                        <div class="order-card bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden hover:shadow-2xl transition-all duration-300">
+                            <!-- Order Header -->
+                            <div class="bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 p-6 relative overflow-hidden">
+                                <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16"></div>
+                                <div class="relative z-10">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-4">
+                                            <div class="w-14 h-14 bg-gradient-to-br from-white/20 to-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20">
+                                                <i class="fas fa-receipt text-white text-xl"></i>
+                                            </div>
+                                            <div>
+                                                <h3 class="text-2xl font-black text-white mb-1">Order #${o.order_id}</h3>
+                                                <div class="flex items-center gap-3 text-slate-300 text-sm">
+                                                    <span class="flex items-center gap-1">
+                                                        <i class="fas fa-table text-xs"></i>
+                                                        Table ${o.table_number}
+                                                    </span>
+                                                    <span class="flex items-center gap-1">
+                                                        <i class="fas fa-user text-xs"></i>
+                                                        ${o.waiter_name || 'Unknown'}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 class="text-xl font-black text-white">Order #${o.order_id}</h3>
-                                            <p class="text-slate-300 text-sm">Table ${o.table_number} • ${o.waiter_name || 'Unknown'}</p>
+                                        <div class="text-right">
+                                            <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">Grand Total</p>
+                                            <p class="text-3xl font-black text-white mb-2">${Number(o.total_amount || 0).toLocaleString()}</p>
+                                            <div class="text-xs text-slate-300 space-y-1">
+                                                <div class="flex justify-between gap-4">
+                                                    <span>Tax (5%):</span>
+                                                    <span>${Number(o.tax || 0).toLocaleString()}</span>
+                                                </div>
+                                                <div class="flex justify-between gap-4">
+                                                    <span>Service (2%):</span>
+                                                    <span>${Number(o.service_charge || 0).toLocaleString()}</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <p class="text-xs text-slate-400 uppercase tracking-widest">Total</p>
-                                        <p class="text-2xl font-black text-white">${Number(o.total_amount || 0).toLocaleString()} MMK</p>
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- Order Body -->
                             <div class="p-6">
-                                <div class="mb-4">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span class="px-3 py-1 bg-gradient-to-r ${badgeClass(o.order_status)} text-white text-sm font-bold rounded-xl">
-                                            ${getStatusIcon(o.order_status)} ${o.order_status}
-                                        </span>
-                                        <div class="flex items-center gap-2">
-                                            ${o.order_status === 'Checkout'
-                                                ? `<button onclick="exportPdf(${o.order_id})" class="pdf-btn px-4 py-2 text-white text-xs font-bold rounded-xl shadow-lg">
-                                                    <i class="fas fa-file-pdf mr-1"></i> PDF
-                                                </button>`
-                                                : ''}
-                                            ${canCheckout
-                                                ? `<button onclick="checkoutOrder(${o.order_id})" class="action-btn px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white text-xs font-bold rounded-xl shadow-lg">
-                                                    <i class="fas fa-cash-register mr-1"></i> Checkout
-                                                </button>`
-                                                : o.order_status === 'Checkout'
-                                                    ? '<span class="px-3 py-2 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl">Already Checked Out</span>'
-                                                    : '<span class="px-3 py-2 bg-slate-100 text-slate-400 text-xs font-bold rounded-xl">Waiting for all items to be Reserved</span>'}
-                                        </div>
+                                <!-- Status and Actions -->
+                                <div class="flex items-center justify-between mb-6">
+                                    <span class="px-4 py-2 bg-gradient-to-r ${badgeClass(o.order_status)} text-white text-sm font-bold rounded-xl shadow-lg">
+                                        ${getStatusIcon(o.order_status)} ${o.order_status}
+                                    </span>
+                                    <div class="flex items-center gap-3">
+                                        ${o.order_status === 'Checkout'
+                                            ? `<button onclick="exportPdf(${o.order_id})" class="pdf-btn px-4 py-2 text-white text-sm font-bold rounded-xl shadow-lg hover:shadow-xl transition-all">
+                                                <i class="fas fa-file-pdf mr-2"></i> PDF
+                                            </button>`
+                                            : ''}
+                                        ${canCheckout
+                                            ? `<button onclick="showPaymentModal(${o.order_id}, ${o.total_amount}, ${o.tax}, ${o.service_charge})" class="action-btn px-4 py-2 bg-gradient-to-r from-emerald-500 to-green-600 text-white text-sm font-bold rounded-xl shadow-lg hover:shadow-xl transition-all">
+                                                <i class="fas fa-cash-register mr-2"></i> Checkout
+                                            </button>`
+                                            : o.order_status === 'Checkout'
+                                                ? '<span class="px-4 py-2 bg-emerald-100 text-emerald-700 text-sm font-bold rounded-xl">Already Checked Out</span>'
+                                                : '<span class="px-4 py-2 bg-slate-100 text-slate-400 text-sm font-bold rounded-xl">Waiting for all items to be Served</span>'}
                                     </div>
                                 </div>
-                                <div class="space-y-2">
-                                    ${itemRows || '<div class="text-center py-4 text-slate-400 text-sm">No items in this order</div>'}
+                                
+                                <!-- Order Items -->
+                                <div class="space-y-3">
+                                    ${itemRows || '<div class="text-center py-6 text-slate-400 text-sm bg-slate-50 rounded-xl">No items in this order</div>'}
                                 </div>
                             </div>
                         </div>
@@ -309,6 +346,148 @@
                         <p class="text-red-600 font-semibold">Failed to load orders. Please refresh.</p>
                     </div>
                 `;
+            }
+        }
+
+        let currentOrderId = null;
+        let currentOrderTotal = 0;
+
+        function showPaymentModal(orderId, totalAmount, tax, serviceCharge) {
+            currentOrderId = orderId;
+            currentOrderTotal = totalAmount;
+            
+            // Calculate subtotal from total amount
+            const subtotal = Number(totalAmount || 0) - Number(tax || 0) - Number(serviceCharge || 0);
+            
+            document.getElementById('modalSubtotal').textContent = `${subtotal.toLocaleString()} MMK`;
+            document.getElementById('modalTax').textContent = `${Number(tax || 0).toLocaleString()} MMK`;
+            document.getElementById('modalServiceCharge').textContent = `${Number(serviceCharge || 0).toLocaleString()} MMK`;
+            document.getElementById('modalOrderTotal').textContent = `${Number(totalAmount || 0).toLocaleString()} MMK`;
+            document.getElementById('paymentMethod').value = 'Cash';
+            document.getElementById('paymentModal').classList.remove('hidden');
+            document.getElementById('paymentModal').classList.add('flex');
+        }
+
+        function closePaymentModal() {
+            document.getElementById('paymentModal').classList.add('hidden');
+            document.getElementById('paymentModal').classList.remove('flex');
+            currentOrderId = null;
+            currentOrderTotal = 0;
+        }
+
+        async function processPayment() {
+            if (!currentOrderId) return;
+            
+            const paymentMethod = document.getElementById('paymentMethod').value;
+            
+            try {
+                Swal.fire({
+                    title: 'Processing Payment...',
+                    html: `Processing payment via ${paymentMethod}...`,
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                const res = await fetch(`/cashier/orders/${currentOrderId}/checkout`, { 
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        paymentMethod: paymentMethod
+                    })
+                });
+                
+                const result = await res.json();
+                Swal.close();
+                
+                if (result.success) {
+                    closePaymentModal();
+                    
+                    // Generate and download PDF invoice
+                    try {
+                        console.log('=== PDF GENERATION DEBUG ===');
+                        console.log('Order ID:', currentOrderId);
+                        
+                        const pdfUrl = `/cashier/orders/${currentOrderId}/pdf`;
+                        console.log('PDF URL:', pdfUrl);
+                        
+                        // Use fetch to get PDF as blob
+                        fetch(pdfUrl)
+                            .then(response => {
+                                console.log('PDF Response status:', response.status);
+                                if (!response.ok) {
+                                    throw new Error(`HTTP error! status: ${response.status}`);
+                                }
+                                return response.blob();
+                            })
+                            .then(blob => {
+                                console.log('PDF blob received, size:', blob.size);
+                                
+                                // Create download link
+                                const url = window.URL.createObjectURL(blob);
+                                const link = document.createElement('a');
+                                link.style.display = 'none';
+                                link.href = url;
+                                link.download = `invoice_${currentOrderId}.pdf`;
+                                
+                                // Trigger download
+                                document.body.appendChild(link);
+                                link.click();
+                                
+                                // Cleanup
+                                setTimeout(() => {
+                                    document.body.removeChild(link);
+                                    window.URL.revokeObjectURL(url);
+                                    console.log('PDF download completed');
+                                }, 100);
+                            })
+                            .catch(error => {
+                                console.error('PDF download failed:', error);
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'PDF Download Failed',
+                                    text: 'Payment was successful but PDF download failed. You can download the invoice later.',
+                                    timer: 3000,
+                                    showConfirmButton: false
+                                });
+                            });
+                        
+                    } catch (pdfError) {
+                        console.error('PDF download failed:', pdfError);
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'PDF Download Failed',
+                            text: 'Payment was successful but PDF download failed. You can download the invoice later.',
+                            timer: 3000,
+                            showConfirmButton: false
+                        });
+                    }
+                    
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Your payment was successful!',
+                        text: 'Payment completed successfully. Invoice has been downloaded.',
+                        timer: 3000,
+                        showConfirmButton: false
+                    });
+                    loadBoard();
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Payment Failed',
+                        text: result.message || 'Failed to process payment.'
+                    });
+                }
+            } catch (error) {
+                Swal.close();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Network Error',
+                    text: 'Please check your connection and try again.'
+                });
             }
         }
 
@@ -394,5 +573,62 @@
         // Initial load
         loadBoard();
     </script>
+
+    <!-- Payment Modal -->
+    <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-bold text-slate-800">Process Payment</h3>
+                <button onclick="closePaymentModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="mb-6">
+                <div class="bg-slate-50 rounded-xl p-4">
+                    <h4 class="text-sm font-bold text-slate-700 mb-3">Invoice Details</h4>
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-600">Subtotal:</span>
+                            <span id="modalSubtotal" class="font-medium">0 MMK</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-600">Tax (5%):</span>
+                            <span id="modalTax" class="font-medium">0 MMK</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-600">Service Charge (2%):</span>
+                            <span id="modalServiceCharge" class="font-medium">0 MMK</span>
+                        </div>
+                        <div class="border-t pt-2 mt-2">
+                            <div class="flex justify-between">
+                                <span class="text-lg font-bold text-slate-800">Grand Total:</span>
+                                <span id="modalOrderTotal" class="text-2xl font-bold text-emerald-600">0 MMK</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-slate-700 mb-2">Payment Method</label>
+                <select id="paymentMethod" class="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    <option value="Cash">Cash</option>
+                    <option value="Card">Credit/Debit Card</option>
+                    <option value="Mobile">Mobile Payment</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+            </div>
+            
+            <div class="flex gap-3">
+                <button onclick="closePaymentModal()" class="flex-1 px-4 py-3 bg-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-300 transition-colors">
+                    Cancel
+                </button>
+                <button onclick="processPayment()" class="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl font-bold hover:from-emerald-600 hover:to-green-700 transition-all shadow-lg">
+                    <i class="fas fa-check-circle mr-2"></i> Process Payment
+                </button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

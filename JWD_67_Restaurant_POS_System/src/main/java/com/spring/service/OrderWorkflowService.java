@@ -2,6 +2,7 @@ package com.spring.service;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -14,9 +15,11 @@ import org.springframework.stereotype.Service;
 public class OrderWorkflowService {
 
     private final JdbcTemplate jdbcTemplate;
+    private final BillingService billingService;
 
-    public OrderWorkflowService(JdbcTemplate jdbcTemplate) {
+    public OrderWorkflowService(JdbcTemplate jdbcTemplate, BillingService billingService) {
         this.jdbcTemplate = jdbcTemplate;
+        this.billingService = billingService;
     }
 
     public List<Map<String, Object>> getOrderItemsBoard() {
@@ -35,8 +38,9 @@ public class OrderWorkflowService {
     }
 
     public List<Map<String, Object>> getOrdersBoard() {
+        System.out.println("=== DEBUG: getOrdersBoard called ===");
         String sql =
-                "SELECT o.order_id, o.order_date, o.status AS order_status, o.total_amount, " +
+                "SELECT o.order_id, o.order_date, o.status AS order_status, o.total_amount, o.tax, o.service_charge, " +
                 "       t.table_number, u.user_name AS waiter_name, " +
                 "       oi.order_item_id, oi.quantity, oi.unit_price, oi.total, oi.note, oi.item_status, " +
                 "       mi.name AS menu_name " +
@@ -48,7 +52,7 @@ public class OrderWorkflowService {
                 "ORDER BY o.order_id DESC, oi.order_item_id ASC";
 
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
-        Map<Integer, Map<String, Object>> orderMap = new HashMap<>();
+        Map<Integer, Map<String, Object>> orderMap = new LinkedHashMap<>();
 
         for (Map<String, Object> row : rows) {
             Integer orderId = (Integer) row.get("order_id");
@@ -60,6 +64,8 @@ public class OrderWorkflowService {
                 m.put("table_number", row.get("table_number"));
                 m.put("waiter_name", row.get("waiter_name"));
                 m.put("total_amount", row.get("total_amount"));
+                m.put("tax", row.get("tax"));
+                m.put("service_charge", row.get("service_charge"));
                 m.put("items", new ArrayList<Map<String, Object>>());
                 return m;
             });
@@ -86,26 +92,58 @@ public class OrderWorkflowService {
             boolean hasItems = !items.isEmpty();
             boolean allReserved = hasItems && items.stream().allMatch(i -> "Served".equals(i.get("item_status")));
             order.put("can_checkout", allReserved && "Pending".equals(order.get("order_status")));
+            
+            // Always ensure billing calculations are up to date for orders with items
+            Integer orderId = (Integer) order.get("order_id");
+            if (hasItems && orderId != null) {
+                try {
+                    System.out.println("=== DEBUG: Updating billing for order ID: " + orderId);
+                    billingService.updateOrderWithBilling(orderId);
+                    
+                    // Refresh the order data with updated billing
+                    Map<String, Object> updatedOrder = jdbcTemplate.queryForMap(
+                        "SELECT o.order_id, o.order_date, o.status AS order_status, o.total_amount, o.tax, o.service_charge, " +
+                        "t.table_number, u.user_name AS waiter_name " +
+                        "FROM `order` o " +
+                        "JOIN restaurant_table t ON o.restaurant_table_id = t.restaurant_table_id " +
+                        "JOIN `user` u ON o.created_by = u.user_id " +
+                        "WHERE o.order_id = ?",
+                        orderId
+                    );
+                    
+                    System.out.println("=== DEBUG: Updated billing for order " + orderId + " - Tax: " + updatedOrder.get("tax") + ", Service Charge: " + updatedOrder.get("service_charge") + ", Total: " + updatedOrder.get("total_amount"));
+                    
+                    // Update the order with fresh billing data
+                    order.put("total_amount", updatedOrder.get("total_amount"));
+                    order.put("tax", updatedOrder.get("tax"));
+                    order.put("service_charge", updatedOrder.get("service_charge"));
+                } catch (Exception e) {
+                    System.err.println("Error updating billing for order " + orderId + ": " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
         }
 
         return new ArrayList<>(orderMap.values());
     }
 
     public List<Map<String, Object>> getWaiterOrdersWithItems(int waiterId) {
+        System.out.println("=== DEBUG: getWaiterOrdersWithItems called for waiter ID: " + waiterId);
         String sql =
-                "SELECT o.order_id, o.order_date, o.order_type, o.status AS order_status, o.total_amount, " +
-                "       t.table_number, " +
+                "SELECT o.order_id, o.order_date, o.order_type, o.status AS order_status, o.total_amount, o.tax, o.service_charge, " +
+                "       t.table_number, u.user_name AS waiter_name, " +
                 "       oi.order_item_id, oi.menu_item_id, oi.quantity, oi.unit_price, oi.total, oi.note, oi.item_status, " +
                 "       mi.name AS menu_name " +
                 "FROM `order` o " +
                 "JOIN restaurant_table t ON o.restaurant_table_id = t.restaurant_table_id " +
+                "JOIN `user` u ON o.created_by = u.user_id " +
                 "LEFT JOIN order_item oi ON o.order_id = oi.order_id " +
                 "LEFT JOIN menu_item mi ON oi.menu_item_id = mi.menu_item_id " +
                 "WHERE o.created_by = ? " +
                 "ORDER BY o.order_id DESC, oi.order_item_id ASC";
 
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, waiterId);
-        Map<Integer, Map<String, Object>> orderMap = new HashMap<>();
+        Map<Integer, Map<String, Object>> orderMap = new LinkedHashMap<>();
 
         for (Map<String, Object> row : rows) {
             Integer orderId = (Integer) row.get("order_id");
@@ -117,6 +155,9 @@ public class OrderWorkflowService {
                 m.put("order_status", row.get("order_status"));
                 m.put("table_number", row.get("table_number"));
                 m.put("total_amount", row.get("total_amount"));
+                m.put("tax", row.get("tax"));
+                m.put("service_charge", row.get("service_charge"));
+                m.put("waiter_name", row.get("waiter_name"));
                 m.put("items", new ArrayList<Map<String, Object>>());
                 return m;
             });
@@ -138,7 +179,15 @@ public class OrderWorkflowService {
             }
         }
 
-        return new ArrayList<>(orderMap.values());
+        List<Map<String, Object>> result = new ArrayList<>(orderMap.values());
+        
+        // Debug: Print order IDs to verify sorting
+        System.out.println("=== DEBUG: Orders sorted by order_id (newest first) ===");
+        for (Map<String, Object> order : result) {
+            System.out.println("Order #" + order.get("order_id") + " - Date: " + order.get("order_date"));
+        }
+        
+        return result;
     }
 
     public List<Map<String, Object>> getMenuOptions() {
@@ -244,7 +293,7 @@ public class OrderWorkflowService {
         );
 
         if (itemCount == null || itemCount == 0) {
-            jdbcTemplate.update("UPDATE `order` SET status = 'Pending', total_amount = 0 WHERE order_id = ?", orderId);
+            jdbcTemplate.update("UPDATE `order` o SET o.status = 'Pending', total_amount = 0 WHERE o.order_id = ?", orderId);
             return;
         }
 
@@ -255,43 +304,83 @@ public class OrderWorkflowService {
         );
 
         if (nonReservedCount != null && nonReservedCount > 0) {
-            jdbcTemplate.update("UPDATE `order` SET status = 'Pending' WHERE order_id = ?", orderId);
+            jdbcTemplate.update("UPDATE `order` o SET o.status = 'Pending' WHERE o.order_id = ?", orderId);
         }
     }
 
     public boolean checkoutOrderByCashier(int orderId) {
+        // For POS behavior: Allow checkout when order exists and has items (items don't need to be served)
         Integer count = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM order_item WHERE order_id = ?",
                 Integer.class,
                 orderId
         );
         if (count == null || count == 0) {
+            System.out.println("Order has no items, cannot checkout");
             return false;
         }
 
-        Integer notReserved = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM order_item WHERE order_id = ? AND item_status <> 'Served'",
-                Integer.class,
+        // Check if order is already checked out or paid
+        String currentStatus = jdbcTemplate.queryForObject(
+                "SELECT o.status FROM `order` o WHERE o.order_id = ?",
+                String.class,
                 orderId
         );
-        if (notReserved != null && notReserved > 0) {
+        
+        if ("Checkout".equals(currentStatus) || "Paid".equals(currentStatus)) {
+            System.out.println("Order is already checked out or paid: " + currentStatus);
+            return false;
+        }
+
+        // Calculate and update tax and service charge before checkout
+        System.out.println("=== DEBUG: Calculating billing for order checkout ===");
+        try {
+            // Use BillingService to calculate and update order totals
+            billingService.updateOrderWithBilling(orderId);
+            System.out.println("Billing updated successfully for order ID: " + orderId);
+        } catch (Exception e) {
+            System.err.println("Error updating billing during checkout: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
 
         int rows = jdbcTemplate.update(
-                "UPDATE `order` SET status = 'Checkout' WHERE order_id = ? AND status = 'Pending'",
+                "UPDATE `order` o SET o.status = 'Checkout' WHERE o.order_id = ? AND o.status = 'Pending'",
                 orderId
         );
         return rows > 0;
     }
 
+    /**
+     * Ensure tax and service charge are calculated for an order
+     */
+    private void ensureOrderBilling(int orderId) {
+        try {
+            System.out.println("=== DEBUG: Ensuring order billing for order ID: " + orderId);
+            billingService.updateOrderWithBilling(orderId);
+            System.out.println("Order billing ensured for order ID: " + orderId);
+        } catch (Exception e) {
+            System.err.println("Error ensuring order billing: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     private void recalculateOrderTotal(int orderId) {
-        Double sum = jdbcTemplate.queryForObject(
-                "SELECT COALESCE(SUM(total), 0) FROM order_item WHERE order_id = ?",
-                Double.class,
-                orderId
-        );
-        jdbcTemplate.update("UPDATE `order` SET total_amount = ? WHERE order_id = ?", sum == null ? 0.0 : sum, orderId);
+        try {
+            System.out.println("=== DEBUG: Recalculating order total with billing for order ID: " + orderId);
+            billingService.updateOrderWithBilling(orderId);
+            System.out.println("Order total with billing recalculated for order ID: " + orderId);
+        } catch (Exception e) {
+            System.err.println("Error recalculating order total with billing: " + e.getMessage());
+            e.printStackTrace();
+            // Fallback to basic calculation if billing service fails
+            Double sum = jdbcTemplate.queryForObject(
+                    "SELECT COALESCE(SUM(total), 0) FROM order_item WHERE order_id = ?",
+                    Double.class,
+                    orderId
+            );
+            jdbcTemplate.update("UPDATE `order` SET total_amount = ? WHERE order_id = ?", sum == null ? 0.0 : sum, orderId);
+        }
     }
 
     private boolean isAllowedTransition(int roleId, int orderItemId, String targetStatus) {
@@ -318,14 +407,14 @@ public class OrderWorkflowService {
     }
 
     public Map<String, Object> getOrderDetailsForEdit(int orderId, int waiterId) {
-        // Verify ownership and status
+        // Verify ownership and status - allow editing for Pending and Accepted orders
         Integer owns = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM `order` WHERE order_id = ? AND created_by = ? AND status = 'Pending'",
+                "SELECT COUNT(*) FROM `order` WHERE order_id = ? AND created_by = ? AND status IN ('Pending', 'Accepted')",
                 Integer.class,
                 orderId, waiterId
         );
         if (owns == null || owns == 0) {
-            throw new RuntimeException("Order not found or cannot be edited");
+            throw new RuntimeException("Order not found or cannot be edited (must be Pending or Accepted)");
         }
 
         // Get order details
@@ -527,7 +616,7 @@ public class OrderWorkflowService {
             }
         }
         
-        // Recalculate order total
+        // Recalculate order total and billing
         recalculateOrderTotal(orderId);
         return true;
     }
@@ -613,7 +702,7 @@ public class OrderWorkflowService {
             }
         }
         
-        // Recalculate order total
+        // Recalculate order total and billing
         recalculateOrderTotal(orderId);
         return true;
     }
