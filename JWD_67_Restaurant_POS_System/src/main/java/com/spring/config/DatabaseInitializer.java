@@ -88,6 +88,14 @@ public class DatabaseInitializer {
             
             System.out.println("=== DATABASE INITIALIZER: Payment table created/verified ===");
             
+            // Fix menu_item status column length to prevent truncation
+            try {
+                jdbcTemplate.execute("ALTER TABLE menu_item MODIFY COLUMN status VARCHAR(50)");
+                System.out.println("=== DATABASE INITIALIZER: Menu_item status column updated ===");
+            } catch (Exception e) {
+                System.out.println("=== DATABASE INITIALIZER: Menu_item status column already exists or update failed: " + e.getMessage() + " ===");
+            }
+            
         } catch (Exception e) {
             System.err.println("Error initializing database: " + e.getMessage());
             e.printStackTrace();
