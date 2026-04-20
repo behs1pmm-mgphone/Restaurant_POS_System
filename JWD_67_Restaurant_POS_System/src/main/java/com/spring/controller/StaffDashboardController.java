@@ -567,63 +567,48 @@ public class StaffDashboardController {
 
     @GetMapping("/cashier/orders/{id}/pdf")
     public ResponseEntity<byte[]> exportOrderPdf(@PathVariable("id") Integer orderId, HttpSession session) {
-        System.out.println("=== DEBUG: PDF Export Request ===");
-        System.out.println("Order ID: " + orderId);
-        
         UserBean loginUser = (UserBean) session.getAttribute("loginUser");
+        
+        // Authorization Check
         if (loginUser == null || loginUser.getRoleId() == null || loginUser.getRoleId() != 4) {
-            System.out.println("ERROR: Unauthorized user");
             return ResponseEntity.badRequest().build();
         }
         
         try {
-            // Get order details
             List<Map<String, Object>> orders = orderWorkflowService.getOrdersBoard();
-            System.out.println("Total orders found: " + orders.size());
             
             Map<String, Object> order = orders.stream()
                     .filter(o -> {
-                        Object orderIdObj = o.get("order_id");
-                        boolean matches = orderIdObj != null && orderIdObj.equals(orderId);
-                        if (matches) {
-                            System.out.println("Found order: " + o);
-                        }
-                        return matches;
+                        Object id = o.get("order_id");
+                        return id != null && id.equals(orderId);
                     })
                     .findFirst()
                     .orElse(null);
             
-            if (order == null) {
-                System.out.println("ERROR: Order not found");
-                return ResponseEntity.notFound().build();
-            }
-            
-            System.out.println("Generating PDF for order: " + order);
-            
-            // Get payment details for the order
+            if (order == null) return ResponseEntity.notFound().build();
+
+            // --- ဒီအပိုင်းက Cashier နာမည်ကို Login User ဆီက ယူတာပါ ---
+            order.put("cashier_name", loginUser.getUserName()); 
+
             Map<String, Object> payment = paymentService.getPaymentByOrderId(orderId);
             
-            // Generate PDF with payment details if payment exists, otherwise regular receipt
+            // DEBUG: Payment data တကယ်ရှိမရှိ console မှာ ကြည့်ဖို့
+            System.out.println("DEBUG: Payment data for Order " + orderId + " => " + payment);
+
             byte[] pdfContent;
-            if (payment != null) {
+            // Payment data ရှိနေမှ generatePaymentReceipt ကို ခေါ်မှာပါ
+            if (payment != null && !payment.isEmpty()) {
                 pdfContent = pdfService.generatePaymentReceipt(order, payment);
             } else {
                 pdfContent = pdfService.generateOrderReceipt(order);
             }
-            System.out.println("PDF generated successfully, size: " + pdfContent.length + " bytes");
-            
-            // Set headers for download
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDispositionFormData("attachment", "order_" + orderId + "_receipt.pdf");
-            headers.setContentLength(pdfContent.length);
+            headers.setContentDispositionFormData("attachment", "receipt_" + orderId + ".pdf");
             
-            return ResponseEntity.ok()
-                    .headers(headers)
-                    .body(pdfContent);
+            return ResponseEntity.ok().headers(headers).body(pdfContent);
                     
         } catch (Exception e) {
-            System.err.println("ERROR generating PDF: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.internalServerError().build();
         }
