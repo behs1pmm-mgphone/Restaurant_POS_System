@@ -136,9 +136,9 @@ public class PdfService {
     }
 
     private void addBillingSummary(Document document, double subtotal, Map<String, Object> payment) {
-        double serviceCharge = subtotal * 0.05; // 5%
-        double tax = subtotal * 0.02;          // 2%
-        double grandTotal = subtotal + serviceCharge + tax;
+        double tax = subtotal * 0.05; // 5%
+        double serviceCharge  = subtotal * 0.02;          // 2%
+        double grandTotal = subtotal +tax +serviceCharge;
 
         Table billingTable = new Table(UnitValue.createPercentArray(new float[]{3, 1}))
                 .useAllAvailableWidth()
@@ -164,18 +164,17 @@ public class PdfService {
 		 * setBorder(Border.NO_BORDER)); }
 		 */
         
+     // PdfService.java ထဲက addBillingSummary သို့မဟုတ် logic နေရာမှာ အစားထိုးပါ
         if (payment != null) {
-            // Database ထဲမှာ payment_method သို့မဟုတ် method ဆိုတဲ့ နာမည်နဲ့ ရှိနိုင်လို့ နှစ်ခုလုံးစစ်ထားပါတယ်
-            Object methodObj = payment.get("payment_method");
-            if (methodObj == null) methodObj = payment.get("method"); 
+            // စာလုံးအကြီး အသေး နှစ်မျိုးလုံးကို စစ်မယ်
+            Object method = payment.get("payment_method");
+            if (method == null) method = payment.get("PAYMENT_METHOD");
             
-            String methodStr = (methodObj != null) ? methodObj.toString() : "Cash";
-            
-            billingTable.addCell(new Cell().add(new Paragraph("Payment Method:")).setItalic().setBorder(Border.NO_BORDER));
-            billingTable.addCell(new Cell().add(new Paragraph(methodStr)).setItalic().setTextAlignment(TextAlignment.RIGHT).setBorder(Border.NO_BORDER));
-        }
-        
+            String displayMethod = (method != null) ? method.toString() : "Cash";
 
+            billingTable.addCell(new Cell().add(new Paragraph("Payment Method:")).setItalic().setBorder(Border.NO_BORDER));
+            billingTable.addCell(new Cell().add(new Paragraph(displayMethod)).setItalic().setTextAlignment(TextAlignment.RIGHT).setBorder(Border.NO_BORDER));
+        }
         document.add(billingTable);
         document.add(new LineSeparator(new SolidLine(1f)).setMarginTop(5));
         

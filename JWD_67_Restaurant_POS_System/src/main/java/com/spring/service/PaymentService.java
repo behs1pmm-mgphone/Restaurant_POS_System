@@ -235,20 +235,37 @@ public class PaymentService {
         }
     }
 
+	/*
+	 * public Map<String, Object> getPaymentByOrderId(Integer orderId) { try {
+	 * return jdbcTemplate.queryForMap(
+	 * "SELECT p.payment_id, p.order_id, p.subtotal, p.tax, p.service_charge, p.grand_total, p.payment_method, p.transaction_date, p.status as payment_status, p.sale_report_report_id, p.created_at, "
+	 * +
+	 * "o.order_date, o.total_amount as order_total, o.status as order_status, t.table_number, u.user_name as cashier_name "
+	 * + "FROM payment p " + "JOIN `order` o ON p.order_id = o.order_id " +
+	 * "JOIN restaurant_table t ON o.restaurant_table_id = t.restaurant_table_id " +
+	 * "JOIN `user` u ON o.created_by = u.user_id " + "WHERE p.order_id = ?",
+	 * orderId ); } catch (Exception e) {
+	 * System.err.println("Error getting payment by order ID: " + e.getMessage());
+	 * return null; }
+	 */
+    
     public Map<String, Object> getPaymentByOrderId(Integer orderId) {
         try {
-            return jdbcTemplate.queryForMap(
-                "SELECT p.payment_id, p.order_id, p.subtotal, p.tax, p.service_charge, p.grand_total, p.payment_method, p.transaction_date, p.status as payment_status, p.sale_report_report_id, p.created_at, " +
-                "o.order_date, o.total_amount as order_total, o.status as order_status, t.table_number, u.user_name as cashier_name " +
-                "FROM payment p " +
-                "JOIN `order` o ON p.order_id = o.order_id " +
-                "JOIN restaurant_table t ON o.restaurant_table_id = t.restaurant_table_id " +
-                "JOIN `user` u ON o.created_by = u.user_id " +
-                "WHERE p.order_id = ?",
-                orderId
-            );
+            // LEFT JOIN သုံးခြင်းဖြင့် User သို့မဟုတ် Table data မရှိရင်တောင် Payment data ကို ရရှိစေမှာပါ
+            String sql = "SELECT p.*, " +
+                         "p.payment_method AS payment_method, " +
+                         "o.order_date, o.status AS order_status, " +
+                         "t.table_number, u.user_name AS cashier_name " +
+                         "FROM payment p " +
+                         "LEFT JOIN `order` o ON p.order_id = o.order_id " +
+                         "LEFT JOIN restaurant_table t ON o.restaurant_table_id = t.restaurant_table_id " +
+                         "LEFT JOIN `user` u ON o.created_by = u.user_id " +
+                         "WHERE p.order_id = ?";
+                         
+            return jdbcTemplate.queryForMap(sql, orderId);
         } catch (Exception e) {
-            System.err.println("Error getting payment by order ID: " + e.getMessage());
+            // Data မရှိရင် null ပြန်ပေးပါမယ်
+            System.err.println("Error fetching payment for Order " + orderId + ": " + e.getMessage());
             return null;
         }
     }
