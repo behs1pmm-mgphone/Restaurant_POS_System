@@ -1,6 +1,7 @@
 package com.spring.repository;
 
 import java.util.ArrayList;
+
 import java.util.List;
 import java.util.Map;
 
@@ -123,5 +124,12 @@ public class MenuItemRepository {
         // 2. adminId (ဘယ်သူပြင်သွားလဲ သိအောင်)
         // 3. id (ဘယ် item ကို ပြင်မှာလဲ)
         return jdbcTemplate.update(sql, status, adminId, id);
+    }
+    public List<Map<String, Object>> findAllStatuses() {
+        // delete_flg = 0 ဖြစ်တဲ့ (မဖျက်ရသေးတဲ့) item အားလုံးရဲ့ id နဲ့ status ကို ယူတာပါ
+        // menu_item_id ကို 'id' လို့ alias ပေးထားမှ JavaScript ဘက်က item.id ဆိုပြီး ဖတ်ရလွယ်မှာပါ
+        String sql = "SELECT menu_item_id as id, status FROM menu_item WHERE delete_flg = 0";
+        
+        return jdbcTemplate.queryForList(sql);
     }
 }

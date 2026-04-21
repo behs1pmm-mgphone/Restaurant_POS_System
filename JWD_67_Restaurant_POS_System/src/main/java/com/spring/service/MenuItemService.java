@@ -73,4 +73,10 @@ public class MenuItemService {
         // Repository ထဲက updateStatus method ကို လှမ်းခေါ်မယ်
         menuRepo.updateStatus(id, status, adminId);
     }
+
+	// --- GET STATUS ONLY (For Polling) ---
+public List<Map<String, Object>> getAllItemStatusOnly() {
+    // Repository ဆီကနေ ID နဲ့ Status နှစ်ခုပဲ ပါတဲ့ List ကို တောင်းခိုင်းတာပါ
+    return menuRepo.findAllStatuses();
+}
 }

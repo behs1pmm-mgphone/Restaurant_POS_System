@@ -283,6 +283,7 @@ aside {
 					<div id="menuSection" th:fragment="menuSection">
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <div th:each="item : ${items}"
+        th:data-id="${item.id != null ? item.id : item.menu_item_id}"
              th:classappend="${item.stockQuantity <= 0} ? 'menu-card shadow-sm border border-slate-100 relative sold-out' : 'menu-card shadow-sm border border-slate-100 relative'">
             
             <img th:src="@{'/' + ${item.image}}" class="item-img"
@@ -295,12 +296,14 @@ aside {
                 <p class="text-emerald-600 font-black text-sm mb-4"
                     th:text="${#numbers.formatDecimal(item.price, 0, 'COMMA', 0, 'POINT')} + ' MMK'"></p>
                 
-                <button
-                    class="mt-auto w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all"
-                    th:onclick="addToCart([[${item.id}]], [[${item.name}]], [[${item.price}]])">
-                    <i class="fa fa-plus mr-2"></i> 
-                    <span th:text="${item.stockQuantity <= 0} ? 'Unavailable' : 'Add to order'">Add to order</span>
-                </button>
+               <button class="btn-order mt-auto w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all"
+        th:onclick="addToCart([[${item.id}]], [[${item.name}]], [[${item.price}]])">
+    <i class="fa fa-plus mr-2"></i> 
+    
+    <span class="status-text" th:text="${item.stockQuantity <= 0} ? 'Unavailable' : 'Add to order'">
+        Add to order
+    </span>
+</button>
             </div>
         </div>
     </div>
@@ -774,6 +777,42 @@ aside {
         loadMenuOptions();
         // Table locking method ကို ဖယ်ရှားလိုက်ပါပြီ
     });
+    
+    
+ // Waiter View ရဲ့ script ထဲမှာ ထည့်ပါ
+   // အရင်ရေးထားတဲ့ polling code ရှိရင် ဖျက်လိုက်ပြီး ဒါလေးနဲ့ အစားထိုးပါ
+setInterval(async () => {
+    try {
+        const response = await fetch('/admin/menu/api/status-list');
+        const items = await response.json();
+
+        items.forEach(item => {
+            // menu_item_id လို့ ရေးထားတဲ့အတွက် item.menu_item_id နဲ့ ရှာရပါမယ်
+            const card = document.querySelector(`.menu-card[data-id="${item.menu_item_id}"]`);
+            
+            if (card) {
+                const statusText = card.querySelector('.status-text');
+                
+                // item.status ကို စစ်မယ် (Database ကလာတဲ့အတိုင်း)
+                const isSoldOut = (item.status === 'Unavailable' || item.stockQuantity <= 0);
+
+                if (isSoldOut) {
+                    if (!card.classList.contains('sold-out')) {
+                        card.classList.add('sold-out');
+                        if (statusText) statusText.innerText = 'Unavailable';
+                    }
+                } else {
+                    if (card.classList.contains('sold-out')) {
+                        card.classList.remove('sold-out');
+                        if (statusText) statusText.innerText = 'Add to order';
+                    }
+                }
+            }
+        });
+    } catch (err) {
+        console.error("Update error:", err);
+    }
+}, 2000);
 </script>
 </body>
 </html>

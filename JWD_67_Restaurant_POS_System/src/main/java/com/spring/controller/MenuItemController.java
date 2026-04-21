@@ -207,4 +207,12 @@ public class MenuItemController {
         }
         return "unauthorized";
     }
+    
+    @GetMapping("/admin/menu/api/status-list")
+    @ResponseBody
+    public List<Map<String, Object>> getStatusList() {
+        // Database ထဲက id နဲ့ status ကိုပဲ ဆွဲထုတ်ပြီး List အနေနဲ့ ပြန်ပေးတာပါ
+        // သင့် Service ထဲမှာ menu အားလုံးကို id နဲ့ status ပဲ ပါတဲ့ map list နဲ့ ပြန်ပေးခိုင်းပါ
+        return menuService.getAllItemStatusOnly(); 
+    }
 }
