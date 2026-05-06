@@ -23,9 +23,20 @@ public class RestaurantTableRepository {
         return count != null && count > 0;
     }
 
-    public int saveTable(RestaurantTable t) {
-        return jdbcTemplate.update("INSERT INTO restaurant_table (table_number, status, area_id) VALUES (?, ?, ?)",
-                t.getTable_number(), t.getStatus(), t.getArea_id());
+    public int saveTable(RestaurantTable t, Integer adminId) {
+        // 1. table_number, status, area_id ကို model မှယူသည်
+        // 2. is_deleted ကို 0 (active) အဖြစ် သတ်မှတ်သည်
+        // 3. created_at ကို NOW() (လက်ရှိအချိန်) သတ်မှတ်သည်
+        // 4. created_by ကို login ဝင်ထားသော adminId ထည့်သွင်းသည်
+
+        String sql = "INSERT INTO restaurant_table (table_number, status, area_id, is_deleted, created_at, created_by) " +
+                     "VALUES (?, ?, ?, 0, NOW(), ?)";
+
+        return jdbcTemplate.update(sql,
+                t.getTable_number(),
+                t.getStatus(),
+                t.getArea_id(),
+                adminId);
     }
 
     public int updateTableStatus(Integer id, String status) {
@@ -37,7 +48,9 @@ public class RestaurantTableRepository {
         return jdbcTemplate.queryForObject(sql, Long.class, status);
     }
     public List<RestaurantTable> findByAreaAreaId(Integer areaId) {
-        String sql = "SELECT * FROM restaurant_table WHERE area_id = ?";
+
+        String sql = "SELECT * FROM restaurant_table WHERE area_id = ? AND COALESCE(is_deleted, 0) = 0";
+
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
             RestaurantTable t = new RestaurantTable();
             t.setRestaurant_table_id(rs.getInt("restaurant_table_id"));

@@ -58,7 +58,7 @@
     }
 
     .dataTables_filter, .dataTables_length { display: none; }
-    
+
     /* Toast Animations */
 @keyframes slideIn {
     from { transform: translateX(100%); opacity: 0; }
@@ -155,9 +155,7 @@ input:checked + .slider:before { transform: translateX(20px); }
                 <a th:href="@{/admin/menu}" class="flex items-center gap-4 p-4 bg-white/10 rounded-[1.5rem] shadow-inner font-bold border border-white/5">
                     <i class="fas fa-utensils text-emerald-400"></i> <span>Menu Catalog</span>
                 </a>
-                <a th:href="@{/admin/order-management}" class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group opacity-70">
-                    <i class="fas fa-receipt text-emerald-500/50"></i> <span class="font-semibold">Order Management</span>
-                </a>
+
                 <a th:href="@{/admin/reports/daily}" class="flex items-center gap-4 p-4 hover:bg-white/10 rounded-[1.5rem] transition-all group opacity-70">
                     <i class="fas fa-chart-pie text-emerald-500/50"></i> <span class="font-semibold">Reports</span>
                 </a>
@@ -198,13 +196,13 @@ input:checked + .slider:before { transform: translateX(20px); }
                     </button>
                 </div>
             </header>
-            
+
             <!-- Header အောက်နား (Line 115 ဝန်းကျင်) မှာ ထည့်ပါ -->
  <!-- Toast Container (ညာဘက်အပေါ်ထောင့်မှာ ကပ်ပေါ်မယ့်နေရာ) -->
 <div id="toastContainer" class="fixed top-5 right-5 z-[100] space-y-3">
-    
+
     <!-- Success Toast -->
-    <div th:if="${param.success}" id="successToast" 
+    <div th:if="${param.success}" id="successToast"
          class="bg-white border-l-4 border-emerald-500 shadow-2xl rounded-2xl p-4 flex items-center gap-4 min-w-[320px] toast-animate-in">
         <div class="bg-emerald-100 p-2 rounded-full text-emerald-600">
             <i class="fas fa-check-circle text-lg"></i>
@@ -216,7 +214,7 @@ input:checked + .slider:before { transform: translateX(20px); }
     </div>
 
     <!-- Error Toast -->
-    <div th:if="${param.error}" id="errorToast" 
+    <div th:if="${param.error}" id="errorToast"
          class="bg-white border-l-4 border-red-500 shadow-2xl rounded-2xl p-4 flex items-center gap-4 min-w-[320px] toast-animate-in">
         <div class="bg-red-100 p-2 rounded-full text-red-600">
             <i class="fas fa-exclamation-circle text-lg"></i>
@@ -253,29 +251,29 @@ input:checked + .slider:before { transform: translateX(20px); }
                             </tr>
                         </thead>
                        <tbody class="divide-y divide-slate-50">
-   <tr th:each="item : ${items}" 
-        th:classappend="${item['status'] == 'Unavailable' ? 'sold-out-row' : ''}" 
+   <tr th:each="item : ${items}"
+        th:classappend="${item['status'] == 'Unavailable' ? 'sold-out-row' : ''}"
         class="hover:bg-slate-50/50 transition-all">
-        
+
         <td class="py-6 font-extrabold text-slate-800 text-xs"></td>
-        
+
         <td class="py-6">
             <div class="w-12 h-12 rounded-2xl bg-slate-100 border-2 border-white shadow-sm overflow-hidden">
                 <img th:src="@{/admin/menu/display(img=${item['image']})}" class="w-full h-full object-cover">
             </div>
         </td>
-        
+
         <td class="py-6">
             <span class="font-bold text-slate-700 text-sm" th:text="${item['name']}">Item Name</span>
         </td>
-        
-        
+
+
         <!-- Status -->
         <td class="py-6 text-center pr-10">
     <div class="flex flex-col items-center gap-2">
         <label class="switch">
-            <input type="checkbox" 
-                   th:checked="${item['status'] == 'Available'}" 
+            <input type="checkbox"
+                   th:checked="${item['status'] == 'Available'}"
                    th:onchange="'toggleStatus(' + ${item['menu_item_id']} + ', this)'">
             <span class="slider"></span>
         </label>
@@ -286,12 +284,12 @@ input:checked + .slider:before { transform: translateX(20px); }
         </span>
     </div>
 </td>
-        
+
         <td class="py-6">
             <span class="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-600 font-black text-[9px] uppercase tracking-wider"
                   th:text="${item['category_name']}">Category</span>
         </td>
-        
+
         <td class="py-6 text-center">
             <span class="font-black text-emerald-600 text-sm" th:text="${item['price']}">0</span>
             <span class="text-[9px] text-emerald-400 ml-0.5">MMK</span>
@@ -299,19 +297,19 @@ input:checked + .slider:before { transform: translateX(20px); }
 
         <td class="py-6 text-right">
             <div class="flex justify-end gap-2">
-                
+
                 <div class="relative group">
                     <button type="button" class="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-xl transition-all">
                         <i class="fas fa-history"></i>
                     </button>
-                    
+
                     <div class="absolute bottom-full mb-3 right-0 w-80 bg-white border border-slate-200 shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-[2rem] p-6 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 pointer-events-none text-left">
-    
+
     <div class="flex items-center justify-between mb-4 border-b border-slate-50 pb-3">
         <h4 class="text-[11px] font-black uppercase text-slate-400 tracking-[0.2em]">Audit Trail</h4>
         <i class="fas fa-shield-alt text-slate-300 text-xs"></i>
     </div>
-    
+
  <div class="space-y-6">
     <div class="flex items-start gap-4">
         <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm shrink-0 shadow-sm border border-emerald-100">
@@ -326,7 +324,7 @@ input:checked + .slider:before { transform: translateX(20px); }
             </div>
         </div>
     </div>
-    
+
     <div class="flex items-start gap-4 border-t border-slate-50 pt-5" th:if="${item['updated_at'] != null}">
         <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-sm shrink-0 shadow-sm border border-blue-100">
             <i class="far fa-edit"></i>
@@ -341,7 +339,7 @@ input:checked + .slider:before { transform: translateX(20px); }
         </div>
     </div>
 </div>
-    
+
     <div class="absolute top-full right-5 w-4 h-4 bg-white border-r border-b border-slate-200 rotate-45 -translate-y-2"></div>
 </div>
                 </div>
@@ -424,21 +422,21 @@ input:checked + .slider:before { transform: translateX(20px); }
         setTimeout(function() {
             const $toast = $('#successToast, #errorToast');
             if ($toast.length > 0) {
-                $toast.addClass('toast-animate-out'); 
+                $toast.addClass('toast-animate-out');
                 setTimeout(() => $toast.remove(), 500);
             }
         }, 3000);
 
         // --- ၃။ DataTables Initialization ---
         const table = $('#menuTable').DataTable({
-            "pageLength": 5, 
-            "ordering": false, 
+            "pageLength": 5,
+            "ordering": false,
             "lengthChange": false,
             "dom": 'rtip', // hide default search box
             "language": {
-                "paginate": { 
-                    "next": '<i class="fas fa-chevron-right"></i>', 
-                    "previous": '<i class="fas fa-chevron-left"></i>' 
+                "paginate": {
+                    "next": '<i class="fas fa-chevron-right"></i>',
+                    "previous": '<i class="fas fa-chevron-left"></i>'
                 }
             },
             // Column Definitions for Index
@@ -459,23 +457,23 @@ input:checked + .slider:before { transform: translateX(20px); }
         table.draw();
 
         // Custom Search Box
-        $('#customSearch').on('keyup', function() { 
-            table.search(this.value).draw(); 
+        $('#customSearch').on('keyup', function() {
+            table.search(this.value).draw();
         });
 
         // Category Filter Logic (Exact Match ဖြစ်အောင် ပြင်ထားပါတယ်)
         $('.category-filter-btn').on('click', function() {
             $('.category-filter-btn').removeClass('active');
             $(this).addClass('active');
-            
+
             const category = $(this).attr('data-category');
             // search pattern: ^...$ (စာလုံးအတိအကျတူမှပြရန်)
             table.column(4).search(category ? '^' + category + '$' : '', true, false).draw();
         });
 
         // Sidebar Toggle
-        $('#sidebarToggle').on('click', function() { 
-            $('#dashboardWrapper').toggleClass('sidebar-hidden'); 
+        $('#sidebarToggle').on('click', function() {
+            $('#dashboardWrapper').toggleClass('sidebar-hidden');
         });
     });
 
@@ -496,7 +494,7 @@ input:checked + .slider:before { transform: translateX(20px); }
             const response = await fetch('/admin/menu/edit-data/' + id);
             if (!response.ok) throw new Error('Network response was not ok');
             const data = await response.json();
-            
+
             $('#modalId').val(data.menu_item_id);
             $('#modalName').val(data.name);
             $('#modalCategory').val(data.category_id);
@@ -504,7 +502,7 @@ input:checked + .slider:before { transform: translateX(20px); }
             $('#modalCurrentImage').val(data.image || "");
             $('#modalStatus').val(data.status);
             $('#menuModal').removeClass('hidden');
-        } catch (err) { 
+        } catch (err) {
             console.error("Fetch Error:", err);
             alert("Could not load item data.");
         }
@@ -517,12 +515,12 @@ input:checked + .slider:before { transform: translateX(20px); }
             window.location.href = '/admin/menu/delete/' + id;
         }
     }
-    
+
     /* status */
    async function toggleStatus(id, checkbox) {
     const isChecked = checkbox.checked;
     const newStatus = isChecked ? 'Available' : 'Unavailable';
-    
+
     // UI feedback ပေးဖို့ row နဲ့ label ကို ယူမယ်
     const row = checkbox.closest('tr');
     const label = row.querySelector('.status-label');
@@ -554,7 +552,7 @@ input:checked + .slider:before { transform: translateX(20px); }
         checkbox.checked = !isChecked;
     }
 }
-    
+
     </script>
 </body>
 </html>

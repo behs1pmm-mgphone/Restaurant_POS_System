@@ -220,7 +220,7 @@ aside {
         }
         document.getElementById('toggleSidebar').addEventListener('click', toggleSidebar);
 
-        // Original WebSocket Logic
+        // Updated WebSocket Logic
         var socket = new SockJS('/ws-pos');
         var stompClient = Stomp.over(socket);
         stompClient.debug = null;
@@ -231,17 +231,25 @@ aside {
                     window.location.reload();
                     return;
                 }
+
                 var data = JSON.parse(message.body);
-                if (data.action === "DELETE") {
+
+                // Admin DELETE signal handle
+                if (data.action === "DELETE" || data.action_type === "DELETE") {
                     var card = document.getElementById('table-card-' + data.id);
                     if(card) {
                         card.style.opacity = "0";
                         card.style.transform = "scale(0.8)";
                         setTimeout(() => card.remove(), 400);
                     }
-                } else if (data.action === "UPDATE_STATUS" || data.action === "TOGGLE") {
+                    return;
+                }
+
+                // Status Update or Toggle Logic
+                if (data.action === "UPDATE_STATUS" || data.action === "TOGGLE" || data.action_type === "TOGGLE") {
                     updateUI(data.id, data.status);
                 } else {
+                    // Default fallback for ADD or other refresh scenarios
                     window.location.reload();
                 }
             });

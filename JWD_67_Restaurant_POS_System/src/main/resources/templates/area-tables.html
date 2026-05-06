@@ -256,41 +256,35 @@
     const stompClient = Stomp.over(socket);
     stompClient.debug = null;
 
-    // Grab current Area ID from Thymeleaf to prevent wrong-room grid updates
     const currentAreaId = /*[[${maskedAreaId}]]*/ '';
 
     stompClient.connect({}, function (frame) {
-        // We listen to table-updates for everything
         stompClient.subscribe('/topic/table-updates', function (message) {
             const data = JSON.parse(message.body);
-            console.log("WebSocket Received:", data);
 
-            // --- 1. GLOBAL NOTIFICATION LOGIC ---
-            // This part runs regardless of which area the admin is currently viewing
-            if (data.action === "SHOW_NOTIFICATION") {
-                showGlobalToast(data.message, data.type);
-            }
+            const task = data.action_type || data.action;
 
-            // --- 2. GRID UPDATES ---
-            if (data.action === "DELETE") {
+            if (task === "DELETE") {
                 const card = document.getElementById('table-card-' + data.id);
                 if (card) {
                     card.style.transform = "scale(0.5)";
                     card.style.opacity = "0";
                     setTimeout(() => card.remove(), 400);
                 }
-            } else if (data.action === "UPDATE_STATUS") {
+            } else if (task === "UPDATE_STATUS") {
                 updateTableUI(data.id, data.status);
-            } else if (data.action === "ADD") {
-                // Only reload the table grid if the new table belongs to THIS area
+            } else if (task === "ADD") {
                 if (data.maskedAreaId === currentAreaId) {
                     window.location.reload();
                 }
             }
+
+            if (data.action === "SHOW_NOTIFICATION") {
+                showGlobalToast(data.message, data.type);
+            }
         });
     });
 
-    // NEW FUNCTION: Manually injects a success/error toast into the page
     function showGlobalToast(message, type) {
         const container = document.querySelector('.toast-container');
         if (!container) return;
@@ -319,7 +313,6 @@
         const newToast = div.firstChild;
         container.appendChild(newToast);
 
-        // Auto-remove after 4 seconds
         setTimeout(() => {
             newToast.classList.add('fade-out-up');
             setTimeout(() => newToast.remove(), 700);
@@ -381,7 +374,6 @@
         setTimeout(() => document.getElementById('tableModal').classList.add('hidden'), 300);
     }
 
-    // Handle existing alerts (from server-side RedirectAttributes)
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.js-alert').forEach(alert => {
             setTimeout(() => {

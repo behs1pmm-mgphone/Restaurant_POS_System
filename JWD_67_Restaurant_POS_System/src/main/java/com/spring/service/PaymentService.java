@@ -24,20 +24,20 @@ public class PaymentService {
         // Initialize database schema
         initializePaymentSchema();
     }
-    
+
     private void initializePaymentSchema() {
         try {
             System.out.println("=== INITIALIZING PAYMENT TABLE SCHEMA ===");
-            
+
             // Check if columns exist and add them if they don't
             String[] columnsToAdd = {
                 "total_amount DECIMAL(10,2)",
-                "subtotal DECIMAL(10,2)", 
+                "subtotal DECIMAL(10,2)",
                 "tax DECIMAL(10,2)",
                 "service_charge DECIMAL(10,2)",
                 "grand_total DECIMAL(10,2)"
             };
-            
+
             for (String columnDef : columnsToAdd) {
                 String columnName = columnDef.split(" ")[0];
                 try {
@@ -50,7 +50,7 @@ public class PaymentService {
                     System.out.println("Added column: " + columnName);
                 }
             }
-            
+
             System.out.println("=== PAYMENT TABLE SCHEMA INITIALIZED ===");
         } catch (Exception e) {
             System.err.println("Error initializing payment schema: " + e.getMessage());
@@ -64,19 +64,19 @@ public class PaymentService {
         System.out.println("Payment Method: " + paymentMethod);
         System.out.println("Total Amount: " + totalAmount);
         System.out.println("Cashier ID: " + cashierId);
-        
+
         try {
             // Update order billing with tax and service charge
             System.out.println("Updating order billing for Order ID: " + orderId);
             billingService.updateOrderWithBilling(orderId);
-            
+
             // Get updated order details
             System.out.println("Fetching updated order details for Order ID: " + orderId);
             Map<String, Object> order = jdbcTemplate.queryForMap(
                 "SELECT order_id, total_amount, tax, service_charge, o.status FROM `order` o WHERE o.order_id = ?",
                 orderId
             );
-            
+
             System.out.println("Order found: " + order);
             System.out.println("Order status: " + order.get("status"));
             System.out.println("Order total: " + order.get("total_amount"));
@@ -85,14 +85,14 @@ public class PaymentService {
                 System.out.println("ERROR: Order status is not 'Checkout'. Current status: " + order.get("status"));
                 throw new RuntimeException("Order must be in Checkout status to process payment");
             }
-            
+
             // Use the calculated total amount from the order
             BigDecimal calculatedTotal = (BigDecimal) order.get("total_amount");
             System.out.println("=== AMOUNT DEBUG ===");
             System.out.println("Order total_amount from database: " + calculatedTotal);
             System.out.println("Order total_amount type: " + (calculatedTotal != null ? calculatedTotal.getClass().getName() : "null"));
             System.out.println("Order total_amount value: " + (calculatedTotal != null ? calculatedTotal.toPlainString() : "NULL"));
-            
+
             // If total_amount is null or zero, try to recalculate from order items
             if (calculatedTotal == null || calculatedTotal.compareTo(BigDecimal.ZERO) <= 0) {
                 System.out.println("WARNING: total_amount is null or zero, attempting to recalculate...");
@@ -110,7 +110,7 @@ public class PaymentService {
                     throw new RuntimeException("Unable to determine order total amount");
                 }
             }
-            
+
             System.out.println("Final calculated total for payment: " + calculatedTotal);
             System.out.println("=== END AMOUNT DEBUG ===");
 
@@ -121,7 +121,7 @@ public class PaymentService {
                 Integer.class,
                 orderId
             );
-            
+
             System.out.println("Existing payment count: " + existingPaymentCount);
 
             if (existingPaymentCount > 0) {
@@ -141,7 +141,7 @@ public class PaymentService {
                     1,
                     cashierId
                 );
-                
+
                 // Then get the generated ID
                 reportId = jdbcTemplate.queryForObject(
                     "SELECT LAST_INSERT_ID()",
@@ -154,7 +154,7 @@ public class PaymentService {
                 // Try to use a default report_id (assuming there's at least one record)
                 try {
                     reportId = jdbcTemplate.queryForObject(
-                        "SELECT MIN(report_id) FROM sale_report LIMIT 1", 
+                        "SELECT MIN(report_id) FROM sale_report LIMIT 1",
                         Integer.class
                     );
                     System.out.println("Using existing sale_report ID: " + reportId);
@@ -164,7 +164,7 @@ public class PaymentService {
                     jdbcTemplate.update(
                         "CREATE TABLE IF NOT EXISTS sale_report (report_id INT AUTO_INCREMENT PRIMARY KEY, report_date DATE, total_sales DECIMAL(10,2), total_orders INT, created_by INT)"
                     );
-                    
+
                     // Insert the record
                     jdbcTemplate.update(
                         "INSERT INTO sale_report (report_date, total_sales, total_orders, created_by) VALUES (?, ?, ?, ?)",
@@ -173,7 +173,7 @@ public class PaymentService {
                         1,
                         cashierId
                     );
-                    
+
                     // Get the generated ID
                     reportId = jdbcTemplate.queryForObject(
                         "SELECT LAST_INSERT_ID()",
@@ -189,31 +189,32 @@ public class PaymentService {
             BigDecimal tax = subtotal.multiply(billingService.getTaxRate()).setScale(2, RoundingMode.HALF_UP);
             BigDecimal serviceCharge = subtotal.multiply(billingService.getServiceChargeRate()).setScale(2, RoundingMode.HALF_UP);
             BigDecimal grandTotal = subtotal.add(tax).add(serviceCharge).setScale(2, RoundingMode.HALF_UP);
-            
+
             System.out.println("Subtotal: " + subtotal);
             System.out.println("Tax (" + billingService.getTaxRate().multiply(new BigDecimal(100)) + "%): " + tax);
             System.out.println("Service Charge (" + billingService.getServiceChargeRate().multiply(new BigDecimal(100)) + "%): " + serviceCharge);
             System.out.println("Grand Total: " + grandTotal);
             System.out.println("=== END INVOICE CALCULATION ===");
-            
+
             // Insert payment record with proper invoice breakdown
             System.out.println("Inserting payment record with invoice breakdown...");
             System.out.println("Payment details - Order ID: " + orderId + ", Method: " + paymentMethod + ", Report ID: " + reportId);
-            
+
+         // PaymentService.java ထဲက INSERT အပိုင်းကို ဒီလိုပြင်ပါ
             int rowsAffected = jdbcTemplate.update(
-                "INSERT INTO payment (order_id, final_amount, total_amount, subtotal, tax, service_charge, grand_total, payment_method, transaction_date, status, sale_report_report_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Success', ?)",
+                "INSERT INTO payment (order_id, final_amount, total_amount, subtotal, tax, service_charge, grand_total, payment_method, transaction_date, status, sale_report_report_id) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Success', ?)",
                 orderId,
-                grandTotal, // final_amount should be the grand total
-                grandTotal, // total_amount should also be the grand total
-                subtotal,
-                tax,
-                serviceCharge,
-                grandTotal,
+                grandTotal,   // final_amount အတွက် (Grand Total)
+                subtotal,     // total_amount အတွက် (ဒီနေရာမှာ grandTotal အစား subtotal ပြောင်းထည့်ပါ)
+                subtotal,     // subtotal အတွက်
+                tax,          // tax အတွက်
+                serviceCharge, // service charge အတွက်
+                grandTotal,   // grand_total အတွက်
                 paymentMethod,
                 LocalDateTime.now(),
                 reportId
             );
-            
             System.out.println("Payment insertion result: " + rowsAffected + " rows affected");
 
             // Update order status to indicate payment completed
@@ -222,7 +223,7 @@ public class PaymentService {
                 "UPDATE `order` o SET o.status = 'Paid' WHERE o.order_id = ?",
                 orderId
             );
-            
+
             System.out.println("Order status update result: " + orderUpdateRows + " rows affected");
             System.out.println("=== PAYMENT SERVICE COMPLETED SUCCESSFULLY ===");
 
@@ -248,7 +249,7 @@ public class PaymentService {
 	 * System.err.println("Error getting payment by order ID: " + e.getMessage());
 	 * return null; }
 	 */
-    
+
     public Map<String, Object> getPaymentByOrderId(Integer orderId) {
         try {
             // LEFT JOIN သုံးခြင်းဖြင့် User သို့မဟုတ် Table data မရှိရင်တောင် Payment data ကို ရရှိစေမှာပါ
@@ -261,7 +262,7 @@ public class PaymentService {
                          "LEFT JOIN restaurant_table t ON o.restaurant_table_id = t.restaurant_table_id " +
                          "LEFT JOIN `user` u ON o.created_by = u.user_id " +
                          "WHERE p.order_id = ?";
-                         
+
             return jdbcTemplate.queryForMap(sql, orderId);
         } catch (Exception e) {
             // Data မရှိရင် null ပြန်ပေးပါမယ်
@@ -277,7 +278,7 @@ public class PaymentService {
                     "JOIN restaurant_table t ON o.restaurant_table_id = t.restaurant_table_id " +
                     "WHERE o.created_by = ? AND p.transaction_date BETWEEN ? AND ? " +
                     "ORDER BY p.transaction_date DESC";
-        
+
         return jdbcTemplate.queryForList(sql, cashierId, startDate, endDate);
     }
 
@@ -288,7 +289,7 @@ public class PaymentService {
                 BigDecimal.class,
                 orderId
             );
-            
+
             return orderTotal != null && orderTotal.compareTo(paymentAmount) == 0;
         } catch (Exception e) {
             System.err.println("Error validating payment amount: " + e.getMessage());
